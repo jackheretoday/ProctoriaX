@@ -29,3 +29,6 @@ pytz==2023.3
 
 # Development
 Flask-DebugToolbar==0.14.1
+
+# Production
+gunicorn==21.2.0
