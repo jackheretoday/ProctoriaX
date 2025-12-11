@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block title %}Session Expired{% endblock %}
+
+{% block content %}
+<div class="container text-center" style="margin-top: 100px;">
+    <h1 class="display-1">⏱️</h1>
+    <h2>Session Expired</h2>
+    <p class="lead">Your session has expired for security reasons.</p>
+    <p>Please log in again to continue.</p>
+    <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-lg">Login Again</a>
+</div>
+{% endblock %}

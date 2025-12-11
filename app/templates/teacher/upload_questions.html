@@ -1,0 +1,213 @@
+{% extends "teacher/base_teacher.html" %}
+
+{% block page_title %}Upload Questions{% endblock %}
+
+{% block teacher_content %}
+<div class="upload-questions-container">
+    <div class="card">
+        <div class="card-header">
+            <h5>Upload Questions from File</h5>
+        </div>
+        <div class="card-body">
+            {% if not tests %}
+            <div class="alert alert-warning">
+                <strong>No tests available!</strong> Please create a test first before uploading questions.
+                <a href="{{ url_for('teacher.manage_tests') }}" class="alert-link">Go to Manage Tests</a>
+            </div>
+            {% else %}
+            <form method="POST" action="{{ url_for('teacher.upload_questions') }}" enctype="multipart/form-data" id="uploadForm">
+                <!-- Step 1: Select Test -->
+                <div class="mb-3">
+                    <label for="test_id" class="form-label">Step 1: Select Test *</label>
+                    <select class="form-select" id="test_id" name="test_id" required>
+                        <option value="">-- Choose a test --</option>
+                        {% for test in tests %}
+                            <option value="{{ test.id }}" data-questions="{{ test.total_questions }}">
+                                {{ test.name }} ({{ test.subject }}) - {{ test.total_questions }} questions
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <div id="test_info" class="form-text"></div>
+                </div>
+                
+                <!-- Step 2: Choose File Type -->
+                <div class="mb-3">
+                    <label for="file_type" class="form-label">Step 2: Choose File Type *</label>
+                    <select class="form-select" id="file_type" name="file_type" required>
+                        <option value="">-- Select file type --</option>
+                        <option value="word">Word Document (.docx)</option>
+                        <option value="powerpoint">PowerPoint (.pptx)</option>
+                    </select>
+                </div>
+                
+                <!-- Step 3: Upload File -->
+                <div class="mb-3">
+                    <label for="file" class="form-label">Step 3: Upload File *</label>
+                    <input type="file" class="form-control" id="file" name="file" accept=".docx,.pptx" required>
+                    <div class="form-text">
+                        Maximum file size: 10 MB. Only .docx and .pptx files are allowed.
+                    </div>
+                    <div id="file_info" class="mt-2"></div>
+                </div>
+                
+                <!-- File Format Info -->
+                <div class="alert alert-info">
+                    <h6><strong>📋 Expected Format:</strong></h6>
+                    <p class="mb-2">Each question should follow this structure:</p>
+                    <pre class="mb-0" style="background: #f8f9fa; padding: 10px; border-radius: 5px;">Question 1: Who developed Python programming language?
+A) Dennis Ritchie
+B) Bjarne Stroustrup
+C) Guido van Rossum
+D) James Gosling
+Answer: C
+Explanation: Python was developed by Guido van Rossum in 1991.
+
+Question 2: What is the correct file extension for Python files?
+A) .pyth
+B) .pt
+C) .pyt
+D) .py
+Answer: D
+Explanation: Python source code files use the .py extension.</pre>
+                    <div class="mt-2">
+                        <small><strong>Important:</strong></small>
+                        <ul class="mb-0 small">
+                            <li>Each question must start with "Question X:" (where X is the number)</li>
+                            <li>Options must be labeled A), B), C), D) (with parenthesis)</li>
+                            <li>Answer line must start with "Answer:" followed by the letter</li>
+                            <li>Explanation is optional but recommended</li>
+                            <li>Leave a blank line between questions</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <!-- Submit Button -->
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+                        <span id="btnText"><i>📤</i> Upload Questions</span>
+                        <span id="btnLoading" style="display: none;">
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            Uploading...
+                        </span>
+                    </button>
+                    <a href="{{ url_for('teacher.manage_tests') }}" class="btn btn-secondary">
+                        <i>⬅️</i> Back to Tests
+                    </a>
+                </div>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block teacher_js %}
+<script>
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB in bytes
+
+// Test selection handler
+document.getElementById('test_id')?.addEventListener('change', function() {
+    const selectedOption = this.options[this.selectedIndex];
+    const testInfo = document.getElementById('test_info');
+    
+    if (this.value) {
+        const questionCount = selectedOption.dataset.questions || '0';
+        testInfo.innerHTML = `<span class="text-info">ℹ️ This test currently has ${questionCount} question(s). New questions will be added.</span>`;
+    } else {
+        testInfo.innerHTML = '';
+    }
+});
+
+// File selection handler with validation
+document.getElementById('file')?.addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    const fileInfo = document.getElementById('file_info');
+    
+    if (!file) {
+        fileInfo.innerHTML = '';
+        return;
+    }
+    
+    const fileName = file.name;
+    const fileSize = file.size;
+    const fileExt = fileName.split('.').pop().toLowerCase();
+    
+    // Validate file extension
+    if (!['docx', 'pptx'].includes(fileExt)) {
+        fileInfo.innerHTML = '<span class="text-danger">❌ Invalid file type. Please select a .docx or .pptx file.</span>';
+        this.value = '';
+        return;
+    }
+    
+    // Validate file size
+    if (fileSize > MAX_FILE_SIZE) {
+        const sizeMB = (fileSize / (1024 * 1024)).toFixed(2);
+        fileInfo.innerHTML = `<span class="text-danger">❌ File too large (${sizeMB} MB). Maximum size is 10 MB.</span>`;
+        this.value = '';
+        return;
+    }
+    
+    // Show success message
+    const sizeMB = (fileSize / (1024 * 1024)).toFixed(2);
+    fileInfo.innerHTML = `<span class="text-success">✅ Selected: <strong>${fileName}</strong> (${sizeMB} MB)</span>`;
+});
+
+// Form submission handler
+document.getElementById('uploadForm')?.addEventListener('submit', function(e) {
+    const testId = document.getElementById('test_id').value;
+    const fileType = document.getElementById('file_type').value;
+    const file = document.getElementById('file').files[0];
+    
+    // Validate all fields
+    if (!testId) {
+        e.preventDefault();
+        alert('Please select a test!');
+        return false;
+    }
+    
+    if (!fileType) {
+        e.preventDefault();
+        alert('Please select a file type!');
+        return false;
+    }
+    
+    if (!file) {
+        e.preventDefault();
+        alert('Please select a file to upload!');
+        return false;
+    }
+    
+    // Confirm upload
+    if (!confirm(`Upload questions from "${file.name}" to the selected test?\n\nThis may take a few moments.`)) {
+        e.preventDefault();
+        return false;
+    }
+    
+    // Show loading state
+    const submitBtn = document.getElementById('submitBtn');
+    const btnText = document.getElementById('btnText');
+    const btnLoading = document.getElementById('btnLoading');
+    
+    submitBtn.disabled = true;
+    btnText.style.display = 'none';
+    btnLoading.style.display = 'inline';
+    
+    return true;
+});
+
+// Auto-select file type based on file extension
+document.getElementById('file')?.addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const ext = file.name.split('.').pop().toLowerCase();
+        const fileTypeSelect = document.getElementById('file_type');
+        
+        if (ext === 'docx' && fileTypeSelect.value === '') {
+            fileTypeSelect.value = 'word';
+        } else if (ext === 'pptx' && fileTypeSelect.value === '') {
+            fileTypeSelect.value = 'powerpoint';
+        }
+    }
+});
+</script>
+{% endblock %}

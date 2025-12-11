@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>{% block title %}Xavier Institute of Engineering - ProctoriaX{% endblock %}</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Global App Styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <!-- Theme Styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/theme-fix.css') }}">
+    {% block extra_css %}{% endblock %}
+</head>
+
+<body>
+    <!-- Professional Topbar -->
+    <header class="topbar">
+        <div class="brand">
+            <!-- Mobile Hamburger Menu - Only show after login -->
+            {% if current_user.is_authenticated %}
+            <button class="mobile-hamburger d-lg-none" type="button" data-bs-toggle="offcanvas"
+                data-bs-target="#mobileNavMenu" aria-controls="mobileNavMenu" aria-label="Toggle navigation">
+                <i class="fas fa-bars"></i>
+            </button>
+            {% endif %}
+
+            <div class="brand-content">
+                <div class="xie-brand">
+                    <img src="{{ url_for('static', filename='images/xie-logo.png') }}" alt="XIE Logo" class="xie-logo">
+                    <span class="xie-name">Xavier Institute of Engineering</span>
+                </div>
+                <div class="powered-by">
+                    <span class="powered-text">Powered by</span>
+                    <div class="proctoriax-brand">
+                        <span class="logo">
+                            <img src="{{ url_for('static', filename='images/ProcotiaX_logo.png') }}" alt="P"
+                                style="width: 100%; height: 100%; object-fit: contain;">
+                        </span>
+                        <span class="proctoriax-name">ProctoriaX</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Theme Toggle Button -->
+        <div class="theme-toggle">
+            <button id="theme-toggle-btn" class="btn btn-link" aria-label="Toggle theme">
+                <i class="fas fa-sun" id="theme-icon-sun"></i>
+                <i class="fas fa-moon d-none" id="theme-icon-moon"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Mobile Navigation Menu (Offcanvas) - Only show after login -->
+    {% if current_user.is_authenticated %}
+    <div class="offcanvas offcanvas-start" tabindex="-1" id="mobileNavMenu" aria-labelledby="mobileNavMenuLabel">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="mobileNavMenuLabel">Quick Actions</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
+            <!-- Mobile Quick Actions will be inserted here by JavaScript -->
+            <div id="mobileQuickActions">
+                <!-- Content will be populated dynamically -->
+            </div>
+
+            <!-- Mobile Navigation Links -->
+            <div class="mobile-nav-section mt-4">
+                <h6 class="text-muted mb-3">Navigation</h6>
+                <div id="mobileNavLinks">
+                    <!-- Navigation links will be populated dynamically -->
+                </div>
+            </div>
+
+            <!-- Mobile User Actions -->
+            <div class="mobile-user-section mt-4">
+                <h6 class="text-muted mb-3">User</h6>
+                <div class="d-grid">
+                    <a href="/auth/logout" class="btn btn-outline-danger">
+                        <i class="fas fa-sign-out-alt me-2"></i> Logout
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="main-content">
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="container mt-3" style="position: relative; z-index: 10;">
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+        <!-- Main Content Area -->
+        {% block content %}{% endblock %}
+    </div>
+    <!-- Footer -->
+    <footer class="mt-5 py-3 text-center" style="background: var(--footer-bg);">
+        <div class="container">
+            <p class="mb-0" style="color: var(--color-text-secondary)">
+                &copy; 2025 Xavier Institute of Engineering - Powered by ProctoriaX. All rights reserved.
+            </p>
+        </div>
+    </footer>
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <!-- Custom JS -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <!-- Theme Toggle Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const themeToggleBtn = document.getElementById('theme-toggle-btn');
+            const sunIcon = document.getElementById('theme-icon-sun');
+            const moonIcon = document.getElementById('theme-icon-moon');
+
+            // Get current theme from localStorage or system preference
+            const currentTheme = localStorage.getItem('theme') || 'light';
+
+            // Apply the current theme
+            document.documentElement.setAttribute('data-bs-theme', currentTheme);
+            updateIcons(currentTheme);
+
+            // Toggle theme on button click
+            themeToggleBtn.addEventListener('click', function () {
+                const currentTheme = document.documentElement.getAttribute('data-bs-theme');
+                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+
+                // Update theme
+                document.documentElement.setAttribute('data-bs-theme', newTheme);
+                localStorage.setItem('theme', newTheme);
+
+                // Update icons
+                updateIcons(newTheme);
+
+                // Dispatch event for any components that need to know about theme changes
+                document.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: newTheme } }));
+            });
+
+            // Listen for system theme changes (only if no preference is set)
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+                if (!localStorage.getItem('theme')) {
+                    const newTheme = e.matches ? 'dark' : 'light';
+                    document.documentElement.setAttribute('data-bs-theme', newTheme);
+                    updateIcons(newTheme);
+                }
+            });
+
+            function updateIcons(theme) {
+                if (theme === 'dark') {
+                    sunIcon.classList.remove('d-none');
+                    moonIcon.classList.add('d-none');
+                } else {
+                    sunIcon.classList.add('d-none');
+                    moonIcon.classList.remove('d-none');
+                }
+            }
+        });
+    </script>
+
+    <!-- Mobile Navigation Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Mobile Quick Actions Setup
+            setupMobileQuickActions();
+
+            function setupMobileQuickActions() {
+                const mobileQuickActions = document.getElementById('mobileQuickActions');
+                const mobileNavLinks = document.getElementById('mobileNavLinks');
+
+                // Only proceed if mobile menu elements exist (user is authenticated)
+                if (!mobileQuickActions || !mobileNavLinks) return;
+
+                // Detect current user role and page
+                const currentPath = window.location.pathname;
+                const isMobile = window.innerWidth < 992;
+
+                // Quick Actions based on role
+                let quickActionsHTML = '';
+                let navLinksHTML = '';
+
+                if (currentPath.includes('/admin')) {
+                    // Admin Quick Actions
+                    quickActionsHTML = `
+                        <h6 class="text-muted mb-3">Quick Actions</h6>
+                        <div class="d-grid gap-2">
+                            <a href="/admin/create-user" class="btn btn-primary">
+                                <i class="fas fa-user-plus me-2"></i> Create User
+                            </a>
+                            <a href="/admin/assign-tests" class="btn btn-success">
+                                <i class="fas fa-clipboard-list me-2"></i> Assign Test
+                            </a>
+                            <a href="/admin/manage-users" class="btn btn-info">
+                                <i class="fas fa-users me-2"></i> View All Users
+                            </a>
+                            <a href="/admin/system-logs" class="btn btn-secondary">
+                                <i class="fas fa-file-alt me-2"></i> View Logs
+                            </a>
+                        </div>
+                    `;
+
+                    // Admin Navigation Links
+                    navLinksHTML = `
+                        <div class="list-group list-group-flush">
+                            <a href="/admin/dashboard" class="list-group-item list-group-item-action">
+                                <i class="fas fa-tachometer-alt me-2"></i> Dashboard
+                            </a>
+                            <a href="/admin/manage-users" class="list-group-item list-group-item-action">
+                                <i class="fas fa-users me-2"></i> Manage Users
+                            </a>
+                            <a href="/admin/assign-tests" class="list-group-item list-group-item-action">
+                                <i class="fas fa-clipboard-list me-2"></i> Assign Tests
+                            </a>
+                            <a href="/admin/manage-test-dates" class="list-group-item list-group-item-action">
+                                <i class="fas fa-calendar me-2"></i> Test Dates
+                            </a>
+                            <a href="/admin/system-logs" class="list-group-item list-group-item-action">
+                                <i class="fas fa-file-alt me-2"></i> System Logs
+                            </a>
+                        </div>
+                    `;
+
+                } else if (currentPath.includes('/teacher')) {
+                    // Teacher Quick Actions
+                    quickActionsHTML = `
+                        <h6 class="text-muted mb-3">Quick Actions</h6>
+                        <div class="d-grid gap-2">
+                            <a href="/teacher/tests/create" class="btn btn-primary">
+                                <i class="fas fa-plus me-2"></i> Create New Test
+                            </a>
+                            <a href="/teacher/upload-questions" class="btn btn-success">
+                                <i class="fas fa-upload me-2"></i> Upload Questions
+                            </a>
+                            <a href="/teacher/results" class="btn btn-info">
+                                <i class="fas fa-chart-bar me-2"></i> View Results
+                            </a>
+                        </div>
+                    `;
+
+                    // Teacher Navigation Links
+                    navLinksHTML = `
+                        <div class="list-group list-group-flush">
+                            <a href="/teacher/dashboard" class="list-group-item list-group-item-action">
+                                <i class="fas fa-tachometer-alt me-2"></i> Dashboard
+                            </a>
+                            <a href="/teacher/tests" class="list-group-item list-group-item-action">
+                                <i class="fas fa-file-alt me-2"></i> My Tests
+                            </a>
+                            <a href="/teacher/upload-questions" class="list-group-item list-group-item-action">
+                                <i class="fas fa-upload me-2"></i> Upload Questions
+                            </a>
+                            <a href="/teacher/upload-terms" class="list-group-item list-group-item-action">
+                                <i class="fas fa-list me-2"></i> Upload Terms
+                            </a>
+                            <a href="/teacher/results" class="list-group-item list-group-item-action">
+                                <i class="fas fa-chart-bar me-2"></i> View Results
+                            </a>
+                        </div>
+                    `;
+
+                } else if (currentPath.includes('/student')) {
+                    // Student Navigation Links (no quick actions)
+                    quickActionsHTML = ''; // Students don't have quick actions
+                    navLinksHTML = `
+                        <div class="list-group list-group-flush">
+                            <a href="/student/dashboard" class="list-group-item list-group-item-action">
+                                <i class="fas fa-tachometer-alt me-2"></i> Dashboard
+                            </a>
+                            <a href="/student/dashboard" class="list-group-item list-group-item-action">
+                                <i class="fas fa-list me-2"></i> My Tests
+                            </a>
+                            <a href="/student/dashboard" class="list-group-item list-group-item-action">
+                                <i class="fas fa-chart-bar me-2"></i> My Results
+                            </a>
+                        </div>
+                    `;
+                }
+
+                // Update mobile menu content
+                mobileQuickActions.innerHTML = quickActionsHTML;
+                mobileNavLinks.innerHTML = navLinksHTML;
+            }
+
+            // Update mobile menu when window resizes
+            window.addEventListener('resize', setupMobileQuickActions);
+        });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+
+</html>

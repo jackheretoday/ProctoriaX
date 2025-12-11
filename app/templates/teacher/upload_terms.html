@@ -1,0 +1,66 @@
+{% extends "teacher/base_teacher.html" %}
+
+{% block page_title %}Upload Terms & Conditions{% endblock %}
+
+{% block teacher_content %}
+<div class="upload-terms-container">
+    <div class="card">
+        <div class="card-header">
+            <h5>Upload Terms & Conditions</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('teacher.upload_terms') }}" enctype="multipart/form-data">
+                <!-- Select Test -->
+                <div class="mb-3">
+                    <label for="test_id" class="form-label">Select Test *</label>
+                    <select class="form-select" id="test_id" name="test_id" required>
+                        <option value="">-- Choose a test --</option>
+                        {% for test in tests %}
+                            <option value="{{ test.id }}">{{ test.name }} ({{ test.subject }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <!-- Choose File Type -->
+                <div class="mb-3">
+                    <label for="file_type" class="form-label">File Type *</label>
+                    <select class="form-select" id="file_type" name="file_type" required>
+                        <option value="word">Word Document (.docx)</option>
+                        <option value="powerpoint">PowerPoint (.pptx)</option>
+                    </select>
+                </div>
+                
+                <!-- Upload File -->
+                <div class="mb-3">
+                    <label for="file" class="form-label">Upload File *</label>
+                    <input type="file" class="form-control" id="file" name="file" accept=".docx,.pptx" required>
+                    <div class="form-text">
+                        Maximum 10 terms allowed. File size limit: 10 MB.
+                    </div>
+                </div>
+                
+                <!-- Format Example -->
+                <div class="alert alert-warning">
+                    <h6>Important:</h6>
+                    <ul>
+                        <li>Maximum 10 bullet points allowed</li>
+                        <li>Each term should be on a separate line or bullet</li>
+                        <li>Terms will be shown to students before starting the test</li>
+                    </ul>
+                    <p class="mb-0"><strong>Example:</strong></p>
+                    <pre class="mb-0">1. You must complete the test in the allotted time.
+2. No external resources allowed.
+3. Once submitted, you cannot go back.</pre>
+                </div>
+                
+                <!-- Submit Button -->
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i>📋</i> Upload Terms
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,127 @@
+{% extends "teacher/base_teacher.html" %}
+
+{% block page_title %}Dashboard{% endblock %}
+
+{% block teacher_content %}
+<div class="dashboard-container">
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="stats-icon">📝</div>
+                <div class="stats-info">
+                    <h3>{{ test_stats.total_tests|default(0) }}</h3>
+                    <p>Total Tests</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="stats-icon">📊</div>
+                <div class="stats-info">
+                    <h3>{{ test_stats.published_tests|default(0) }}</h3>
+                    <p>Published Tests</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="stats-icon">👥</div>
+                <div class="stats-info">
+                    <h3>{{ results_summary.total_students|default(0) }}</h3>
+                    <p>Total Students</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="stats-icon">📈</div>
+                <div class="stats-info">
+                    <h3>{{ results_summary.average_score|default(0) }}%</h3>
+                    <p>Average Score</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card quick-actions-card">
+                <div class="card-body">
+                    <h5 class="card-title">Quick Actions</h5>
+                    <div class="btn-group" role="group">
+                        <a href="{{ url_for('teacher.manage_tests') }}" class="btn btn-primary">
+                            <span class="icon">📝</span>
+                            Create New Test
+                        </a>
+                        <a href="{{ url_for('teacher.upload_questions') }}" class="btn btn-success">
+                            <span class="icon">📤</span>
+                            Upload Questions
+                        </a>
+                        <a href="{{ url_for('teacher.view_results') }}" class="btn btn-info">
+                            <span class="icon">📈</span>
+                            View Results
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Tests -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Recent Tests</h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_tests %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Test Name</th>
+                                        <th>Subject</th>
+                                        <th>Duration</th>
+                                        <th>Questions</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for test in recent_tests %}
+                                    <tr>
+                                        <td>{{ test.name }}</td>
+                                        <td>{{ test.subject }}</td>
+                                        <td>{{ test.duration }} mins</td>
+                                        <td>{{ test.question_count|default(0) }}</td>
+                                        <td>
+                                            {% if test.is_published %}
+                                                <span class="badge bg-success">Published</span>
+                                            {% else %}
+                                                <span class="badge bg-warning">Draft</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <a href="{{ url_for('teacher.view_results', test_id=test.id) }}" class="btn btn-sm btn-info">View Results</a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No tests created yet. <a href="{{ url_for('teacher.manage_tests') }}">Create your first test</a></p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block teacher_js %}
+<script src="{{ url_for('static', filename='js/admin-dashboard.js') }}"></script>
+{% endblock %}

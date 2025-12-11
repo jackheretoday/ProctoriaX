@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ test.name }} - Test in Progress</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/student.css') }}">
+    <style>
+        body { overflow-x: hidden; }
+        .test-header { 
+            background: #fff; 
+            padding: 15px 30px; 
+            border-bottom: 2px solid #ddd; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            right: 0; 
+            z-index: 1000; 
+        }
+        .header-left {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .test-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .question-progress {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .timer-display { 
+            font-size: 2rem; 
+            font-weight: bold; 
+            color: #28a745; 
+            font-family: monospace; 
+        }
+        .timer-display.warning { color: #ffc107; }
+        .timer-display.danger { color: #dc3545; }
+        .test-body { margin-top: 120px; padding: 30px; max-width: 900px; margin-left: auto; margin-right: auto; }
+        .security-warning { 
+            margin-bottom: 20px; 
+            border-left: 4px solid #ffc107; 
+            background: #fff3cd; 
+        }
+        .question-card { background: #fff; padding: 40px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .question-text { font-size: 1.3rem; margin-bottom: 30px; line-height: 1.6; }
+        .option-label { font-size: 1.1rem; padding: 15px 20px; margin: 10px 0; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; display: block; transition: all 0.3s; }
+        .option-label:hover { background: #f8f9fa; border-color: #007bff; }
+        .option-label input[type="radio"] { margin-right: 15px; width: 20px; height: 20px; }
+        .submit-btn { font-size: 1.2rem; padding: 12px 40px; margin-top: 30px; }
+    </style>
+</head>
+<body class="test-active prevent-screenshot">
+    <!-- Test Header -->
+    <div class="test-header">
+        <div class="header-left">
+            <div class="test-info">
+                <strong>{{ config.get('ORGANIZATION_NAME', 'Xavier Institute of Engineering') }}</strong>
+                <span class="ms-3">{{ test.name }}</span>
+            </div>
+            <div class="question-progress">
+                <span>Question {{ question_number }} of {{ total_questions }}</span>
+                {% if question_number > 1 %}
+                <button type="button" class="btn btn-outline-secondary btn-sm ms-3" onclick="goBack()" id="backBtn">
+                    <i class="fas fa-arrow-left me-1"></i>Back
+                </button>
+                {% endif %}
+            </div>
+        </div>
+        <div class="timer-display" id="timer">
+            <span id="timerDisplay">Loading...</span>
+        </div>
+    </div>
+
+    <!-- Test Body -->
+    <div class="test-body">
+        <!-- Security Warning -->
+        <div class="alert alert-warning alert-dismissible fade show security-warning" role="alert">
+            <h6><i class="fas fa-exclamation-triangle me-2"></i>Important Security Notice</h6>
+            <p class="mb-2 small">
+                This test is monitored for security violations. The following actions will trigger warnings and may auto-submit your test:
+            </p>
+            <ul class="small mb-2">
+                <li>Exiting fullscreen mode</li>
+                <li>Switching tabs or windows</li>
+                <li>Using Alt+Tab, Windows key, or other system shortcuts</li>
+                <li>Attempting split-screen mode on mobile/tablet</li>
+                <li>Window resizing or screen orientation changes</li>
+            </ul>
+            <p class="mb-0 small"><strong>You get 1 warning, then the test auto-submits on the second violation.</strong></p>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        
+        <div class="question-card">
+            <div class="question-info">
+                <div class="progress mb-4">
+                    <div class="progress-bar" role="progressbar" style="width: {{ (question_number / total_questions * 100)|round }}%"></div>
+                </div>
+            </div>
+            
+            <div class="question-text prevent-screenshot">
+                {{ question.question_text }}
+            </div>
+            
+            <form id="answerForm" onsubmit="return submitAnswer(event)">
+                <input type="hidden" name="question_id" value="{{ question.id }}">
+                <input type="hidden" name="question_number" value="{{ question_number }}">
+                
+                <div class="options">
+                    {% for option_key, option_value in question.options.items() %}
+                    <label class="option-label prevent-screenshot">
+                        <input type="radio" name="selected_answer" value="{{ option_key }}" required>
+                        <strong>{{ option_key }})</strong> {{ option_value }}
+                    </label>
+                    {% endfor %}
+                </div>
+                
+                <div class="text-center">
+                    <button type="submit" class="btn btn-primary btn-lg submit-btn">
+                        {% if question_number >= total_questions %}
+                            Submit Answer & Finish Test
+                        {% else %}
+                            Submit Answer & Next Question
+                        {% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Screenshot Prevention Overlay -->
+    <div class="test-prevention-overlay"></div>
+
+    <script>
+        const TEST_ID = {{ test.id }};
+        const TOTAL_SECONDS = {{ remaining_seconds }};
+        const QUESTION_NUMBER = {{ question_number }};
+        const TOTAL_QUESTIONS = {{ total_questions }};
+        
+        let remainingSeconds = TOTAL_SECONDS;
+        let timerInterval;
+        
+        // Initialize timer
+        function initTimer() {
+            updateTimerDisplay();
+            timerInterval = setInterval(function() {
+                remainingSeconds--;
+                updateTimerDisplay();
+                
+                if (remainingSeconds <= 0) {
+                    clearInterval(timerInterval);
+                    autoSubmitTest();
+                }
+            }, 1000);
+        }
+        
+        function updateTimerDisplay() {
+            const hours = Math.floor(remainingSeconds / 3600);
+            const minutes = Math.floor((remainingSeconds % 3600) / 60);
+            const seconds = remainingSeconds % 60;
+            
+            let display = '';
+            if (hours > 0) {
+                display = `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            } else {
+                display = `${minutes}:${String(seconds).padStart(2, '0')}`;
+            }
+            
+            document.getElementById('timerDisplay').textContent = display;
+            
+            const timerElement = document.getElementById('timer');
+            if (remainingSeconds < 60) {
+                timerElement.className = 'timer-display danger';
+            } else if (remainingSeconds < 300) {
+                timerElement.className = 'timer-display warning';
+            } else {
+                timerElement.className = 'timer-display';
+            }
+        }
+        
+        function autoSubmitTest() {
+            alert('Time is up! Your test will be auto-submitted.');
+            // Mark as final submission to exit fullscreen
+            isFinalSubmission = true;
+            exitFullscreen();
+            setTimeout(() => {
+                window.location.href = `/student/tests/${TEST_ID}/submit`;
+            }, 100);
+        }
+        
+        function submitAnswer(event) {
+            event.preventDefault();
+            
+            const selectedAnswer = document.querySelector('input[name="selected_answer"]:checked');
+            if (!selectedAnswer) {
+                alert('Please select an answer');
+                return false;
+            }
+            
+            // Disable beforeunload warning for form submission
+            window.onbeforeunload = null;
+            
+            const formData = new FormData(event.target);
+            const data = {
+                question_id: formData.get('question_id'),
+                selected_answer: formData.get('selected_answer'),
+                question_number: formData.get('question_number')
+            };
+            
+            fetch(`/student/tests/${TEST_ID}/submit-answer`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    if (result.last_question) {
+                        if (confirm('This was the last question. Submit your test now?')) {
+                            // This is the FINAL submission - exit fullscreen
+                            isFinalSubmission = true;
+                            exitFullscreen();
+                            // Small delay to ensure fullscreen exits cleanly
+                            setTimeout(() => {
+                                window.location.href = `/student/tests/${TEST_ID}/submit`;
+                            }, 100);
+                        } else {
+                            // User chose not to submit yet, re-enable warning
+                            enableNavigationWarning();
+                        }
+                    } else {
+                        // NOT the last question - stay in fullscreen and navigate to next
+                        // Keep fullscreen active during navigation
+                        window.location.href = result.redirect_url;
+                    }
+                } else {
+                    alert('Error: ' + result.error);
+                    // Re-enable warning if there's an error
+                    enableNavigationWarning();
+                }
+            })
+            .catch(error => {
+                alert('Error submitting answer: ' + error);
+                // Re-enable warning if there's an error
+                enableNavigationWarning();
+            });
+            
+            return false;
+        }
+        
+        // Function to enable navigation warning
+        function enableNavigationWarning() {
+            window.onbeforeunload = function() {
+                return "Test in progress. Are you sure you want to leave?";
+            };
+        }
+        
+        // Prevent navigation initially
+        enableNavigationWarning();
+        
+        // Disable back button
+        history.pushState(null, null, location.href);
+        window.onpopstate = function() {
+            history.go(1);
+        };
+        
+        // Go back to previous question
+        function goBack() {
+            if (QUESTION_NUMBER > 1) {
+                // Disable beforeunload warning for navigation
+                window.onbeforeunload = null;
+                
+                // Navigate to previous question using the new route
+                window.location.href = `/student/tests/${TEST_ID}/previous-question/${QUESTION_NUMBER - 1}`;
+            }
+        }
+        
+        // Enhanced fullscreen functionality with notification blocking
+        let fullscreenViolations = {{ fullscreen_violations }};
+        let fullscreenWarningShown = false;
+        let fullscreenInitialized = false;
+        let isProcessingViolation = false;
+        let isFinalSubmission = false;  // Flag to indicate final test submission
+        let notificationPermission = null;
+        
+        function enterFullscreen() {
+            const elem = document.documentElement;
+            
+            // Request notification permission first (to block notifications)
+            if ("Notification" in window) {
+                Notification.requestPermission().then(function (permission) {
+                    notificationPermission = permission;
+                });
+            }
+            
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen().catch(err => {
+                    console.log('Fullscreen not supported or denied');
+                });
+            } else if (elem.webkitRequestFullscreen) { /* Safari */
+                elem.webkitRequestFullscreen();
+            } else if (elem.msRequestFullscreen) { /* IE11 */
+                elem.msRequestFullscreen();
+            }
+            
+            // Block system notifications
+            blockNotifications();
+        }
+        
+        function blockNotifications() {
+            // Try to disable notifications using various methods
+            if ("Notification" in window) {
+                // Set notification permission to denied if possible
+                try {
+                    // This won't work in most browsers due to security, but worth trying
+                    Object.defineProperty(Notification, 'permission', {
+                        value: 'denied',
+                        writable: false
+                    });
+                } catch (e) {
+                    console.log('Cannot override notification permission');
+                }
+            }
+            
+            // Override Web Notifications API
+            if (window.Notification) {
+                const originalRequestPermission = window.Notification.requestPermission;
+                window.Notification.requestPermission = function() {
+                    return Promise.resolve('denied');
+                };
+            }
+        }
+        
+        function exitFullscreen() {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) { /* Safari */
+                document.webkitExitFullscreen();
+            } else if (document.msExitFullscreen) { /* IE11 */
+                document.msExitFullscreen();
+            }
+        }
+        
+        function handleFullscreenExit() {
+            // Don't track violations if this is the final submission
+            if (isFinalSubmission) {
+                return;
+            }
+            
+            // Prevent multiple simultaneous violations
+            if (isProcessingViolation) {
+                return;
+            }
+            
+            // Check if we're actually exiting fullscreen (not entering)
+            if (!document.fullscreenElement && 
+                !document.webkitFullscreenElement && 
+                !document.msFullscreenElement &&
+                fullscreenInitialized) {
+                
+                isProcessingViolation = true;
+                
+                // Track violation
+                fetch(`/student/tests/${TEST_ID}/fullscreen-violation`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        fullscreenViolations = result.violations;
+                        
+                        if (result.auto_submit) {
+                            // Second violation - auto submit
+                            alert('⚠️ Test Auto-Submitted!\n\nYou exited fullscreen mode twice. Your test has been automatically submitted.');
+                            window.onbeforeunload = null;
+                            isFinalSubmission = true;  // Mark as final to prevent further violations
+                            // Fullscreen already exited, just redirect
+                            setTimeout(() => {
+                                window.location.href = `/student/tests/${TEST_ID}/submit`;
+                            }, 100);
+                        } else {
+                            // First violation - warning
+                            alert('⚠️ WARNING!\n\n' + result.message + '\n\nPlease stay in fullscreen mode.');
+                            // Try to re-enter fullscreen
+                            setTimeout(() => {
+                                enterFullscreen();
+                                isProcessingViolation = false;
+                            }, 500);
+                        }
+                    } else {
+                        isProcessingViolation = false;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error tracking fullscreen violation:', error);
+                    isProcessingViolation = false;
+                });
+            }
+        }
+        
+        // Listen for fullscreen changes
+        document.addEventListener('fullscreenchange', handleFullscreenExit);
+        document.addEventListener('webkitfullscreenchange', handleFullscreenExit);
+        document.addEventListener('msfullscreenchange', handleFullscreenExit);
+        
+        // Track tab changes/visibility changes as violations
+        document.addEventListener('visibilitychange', function() {
+            // If user switches away from tab (tab is hidden)
+            if (document.hidden && !isFinalSubmission && fullscreenInitialized) {
+                // Treat tab switch as a violation
+                if (!isProcessingViolation) {
+                    isProcessingViolation = true;
+                    
+                    fetch(`/student/tests/${TEST_ID}/fullscreen-violation`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(result => {
+                        if (result.success) {
+                            fullscreenViolations = result.violations;
+                            
+                            if (result.auto_submit) {
+                                // Second violation - auto submit
+                                alert('⚠️ Test Auto-Submitted!\n\nYou switched tabs/windows during the test. Your test has been automatically submitted.');
+                                window.onbeforeunload = null;
+                                isFinalSubmission = true;
+                                setTimeout(() => {
+                                    window.location.href = `/student/tests/${TEST_ID}/submit`;
+                                }, 100);
+                            } else {
+                                // First violation - warning
+                                alert('⚠️ WARNING!\n\nYou switched tabs/windows. This counts as a violation.\nDoing this again will auto-submit your test!');
+                                isProcessingViolation = false;
+                            }
+                        } else {
+                            isProcessingViolation = false;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error tracking tab switch violation:', error);
+                        isProcessingViolation = false;
+                    });
+                }
+            }
+        });
+        
+        // Prevent right-click context menu
+        document.addEventListener('contextmenu', function(e) {
+            if (!isFinalSubmission) {
+                e.preventDefault();
+                return false;
+            }
+        });
+        
+        // Prevent copy-paste within test window
+        document.addEventListener('copy', function(e) {
+            if (!isFinalSubmission) {
+                e.preventDefault();
+                alert('⚠️ Copying text is not allowed during the test!');
+                return false;
+            }
+        });
+        
+        document.addEventListener('paste', function(e) {
+            if (!isFinalSubmission) {
+                e.preventDefault();
+                alert('⚠️ Pasting text is not allowed during the test!');
+                return false;
+            }
+        });
+        
+        document.addEventListener('cut', function(e) {
+            if (!isFinalSubmission) {
+                e.preventDefault();
+                alert('⚠️ Cutting text is not allowed during the test!');
+                return false;
+            }
+        });
+        
+        // Enter fullscreen ONCE when test starts
+        function initFullscreen() {
+            if (fullscreenInitialized) {
+                return; // Already initialized
+            }
+            
+            fullscreenInitialized = true;
+            
+            // Block notifications immediately
+            blockNotifications();
+            
+            // Try to enter fullscreen immediately
+            setTimeout(function() {
+                enterFullscreen();
+            }, 100);
+            
+            // Additional notification blocking
+            setInterval(function() {
+                if (!isFinalSubmission) {
+                    blockNotifications();
+                }
+            }, 5000); // Re-block every 5 seconds
+        }
+        
+        // Enhanced mobile/tablet split-screen detection
+        function detectSplitScreen() {
+            // Check if screen width is significantly larger than height (landscape split)
+            const aspectRatio = window.screen.width / window.screen.height;
+            if (aspectRatio > 2.0) {
+                handleSecurityViolation('Unusual aspect ratio detected - possible split-screen');
+            }
+            
+            // Check if available screen size is less than total screen size
+            const availableWidth = window.screen.availWidth;
+            const availableHeight = window.screen.availHeight;
+            const totalWidth = window.screen.width;
+            const totalHeight = window.screen.height;
+            
+            if (availableWidth < totalWidth * 0.8 || availableHeight < totalHeight * 0.8) {
+                handleSecurityViolation('Reduced available screen space - split-screen detected');
+            }
+            
+            // Check for window position anomalies
+            const windowWidth = window.outerWidth;
+            const windowHeight = window.outerHeight;
+            
+            if (windowWidth < window.screen.width * 0.7 || windowHeight < window.screen.height * 0.7) {
+                handleSecurityViolation('Window size reduced - split-screen mode detected');
+            }
+        }
+        
+        // Mobile-specific split-screen detection
+        function detectMobileSplitScreen() {
+            // Check for touch-enabled devices
+            if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+                // Detect Android split-screen
+                if (navigator.userAgent.toLowerCase().includes('android')) {
+                    // Check window dimensions
+                    if (window.innerWidth < window.screen.width * 0.8) {
+                        handleSecurityViolation('Android split-screen mode detected');
+                    }
+                }
+                
+                // Detect iPad split-screen
+                if (navigator.userAgent.toLowerCase().includes('ipad')) {
+                    if (window.innerWidth < window.screen.width * 0.8) {
+                        handleSecurityViolation('iPad split-screen mode detected');
+                    }
+                }
+                
+                // Detect Samsung DeX or other desktop modes
+                if (navigator.userAgent.toLowerCase().includes('dex') || 
+                    document.documentElement.getAttribute('data-dex-mode')) {
+                    handleSecurityViolation('Desktop mode detected on mobile device');
+                }
+            }
+        }
+        
+        // Enhanced security measures to prevent system interruptions
+        function preventSystemInterruptions() {
+            // Run split-screen detection periodically
+            setInterval(function() {
+                if (!isFinalSubmission) {
+                    detectSplitScreen();
+                    detectMobileSplitScreen();
+                }
+            }, 3000);
+            
+            // Prevent Alt+Tab, Windows key, etc. with violation tracking
+            document.addEventListener('keydown', function(e) {
+                if (!isFinalSubmission) {
+                    // Track Alt key combinations
+                    if (e.altKey) {
+                        handleSecurityViolation('Alt key combination pressed');
+                        e.preventDefault();
+                        return false;
+                    }
+                    // Prevent Windows/Meta key combinations
+                    if (e.key === 'Meta' || e.key === 'OS') {
+                        handleSecurityViolation('Windows/Meta key pressed');
+                        e.preventDefault();
+                        return false;
+                    }
+                    // Prevent Escape key
+                    if (e.key === 'Escape') {
+                        handleSecurityViolation('Escape key pressed');
+                        e.preventDefault();
+                        return false;
+                    }
+                    // Prevent Tab key
+                    if (e.key === 'Tab') {
+                        handleSecurityViolation('Tab key pressed');
+                        e.preventDefault();
+                        return false;
+                    }
+                    // Prevent F1-F12 keys (except F11 which is handled separately)
+                    if (e.key.startsWith('F') && !isNaN(e.key.substring(1))) {
+                        handleSecurityViolation(`Function key ${e.key} pressed`);
+                        e.preventDefault();
+                        return false;
+                    }
+                }
+            });
+            
+            // Detect window resize (potential split-screen)
+            let windowWidth = window.innerWidth;
+            let windowHeight = window.innerHeight;
+            let resizeTimeout;
+            
+            window.addEventListener('resize', function() {
+                if (!isFinalSubmission) {
+                    clearTimeout(resizeTimeout);
+                    resizeTimeout = setTimeout(function() {
+                        const newWidth = window.innerWidth;
+                        const newHeight = window.innerHeight;
+                        
+                        // Check for significant size change (potential split-screen)
+                        if (Math.abs(newWidth - windowWidth) > 100 || Math.abs(newHeight - windowHeight) > 100) {
+                            if (newWidth < window.screen.width * 0.8 || newHeight < window.screen.height * 0.8) {
+                                handleSecurityViolation('Window resize detected - possible split-screen mode');
+                            }
+                        }
+                        
+                        windowWidth = newWidth;
+                        windowHeight = newHeight;
+                        
+                        // Run split-screen detection after resize
+                        detectSplitScreen();
+                        detectMobileSplitScreen();
+                    }, 500);
+                }
+            });
+            
+            // Detect screen orientation change (mobile/tablet split attempt)
+            window.addEventListener('orientationchange', function() {
+                if (!isFinalSubmission) {
+                    setTimeout(function() {
+                        handleSecurityViolation('Screen orientation changed - possible split-screen attempt');
+                        detectMobileSplitScreen();
+                    }, 100);
+                }
+            });
+            
+            // Block visibility API attempts
+            Object.defineProperty(document, 'hidden', {
+                get: function() {
+                    return false; // Always report as visible
+                },
+                set: function(value) {
+                    // Prevent setting to hidden
+                }
+            });
+            
+            // Override visibility change events
+            document.addEventListener('visibilitychange', function(e) {
+                if (!isFinalSubmission) {
+                    e.stopImmediatePropagation();
+                    e.preventDefault();
+                }
+            }, true);
+            
+            // Prevent window focus/blur events
+            window.addEventListener('blur', function(e) {
+                if (!isFinalSubmission) {
+                    e.stopImmediatePropagation();
+                    handleSecurityViolation('Window lost focus');
+                    setTimeout(() => window.focus(), 100);
+                }
+            });
+            
+            // Keep window focused
+            setInterval(function() {
+                if (!isFinalSubmission && !document.hasFocus()) {
+                    handleSecurityViolation('Window focus lost');
+                    window.focus();
+                }
+            }, 3000);
+            
+            // Detect multi-monitor setups and window position
+            setInterval(function() {
+                if (!isFinalSubmission) {
+                    const screenX = window.screenX || window.screenLeft || 0;
+                    const screenY = window.screenY || window.screenTop || 0;
+                    const screenWidth = window.screen.width;
+                    const screenHeight = window.screen.height;
+                    
+                    // Check if window is outside primary screen bounds (multi-monitor)
+                    if (screenX < -100 || screenY < -100 || 
+                        screenX > screenWidth || screenY > screenHeight) {
+                        handleSecurityViolation('Window moved outside primary screen - multi-monitor detected');
+                    }
+                }
+            }, 5000);
+        }
+        
+        // Handle security violations with warning system
+        function handleSecurityViolation(violationType) {
+            if (isProcessingViolation || isFinalSubmission) {
+                return;
+            }
+            
+            isProcessingViolation = true;
+            
+            // Track violation
+            fetch(`/student/tests/${TEST_ID}/fullscreen-violation`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    violation_type: violationType
+                })
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    fullscreenViolations = result.violations;
+                    
+                    if (result.auto_submit) {
+                        // Second violation - auto submit
+                        alert(`⚠️ Test Auto-Submitted!\n\nSecurity violation detected: ${violationType}\nThis is your second violation. Your test has been automatically submitted.`);
+                        window.onbeforeunload = null;
+                        isFinalSubmission = true;
+                        exitFullscreen();
+                        setTimeout(() => {
+                            window.location.href = `/student/tests/${TEST_ID}/submit`;
+                        }, 100);
+                    } else {
+                        // First violation - warning
+                        alert(`⚠️ SECURITY WARNING!\n\nViolation detected: ${violationType}\nThis is your first warning. Doing this again will auto-submit your test!`);
+                        isProcessingViolation = false;
+                    }
+                } else {
+                    isProcessingViolation = false;
+                }
+            })
+            .catch(error => {
+                console.error('Error tracking security violation:', error);
+                isProcessingViolation = false;
+            });
+        }
+        
+        // Initialize ONCE when page is ready
+        if (document.readyState === 'complete') {
+            // Page already loaded
+            initFullscreen();
+        } else {
+            // Wait for page to load
+            window.addEventListener('load', function() {
+                initFullscreen();
+            });
+        }
+        
+        // Prevent F11 and other keys that might interfere
+        document.addEventListener('keydown', function(e) {
+            if (!isFinalSubmission) {
+                // Prevent F11 (fullscreen toggle)
+                if (e.key === 'F11') {
+                    e.preventDefault();
+                    return false;
+                }
+                // Prevent Ctrl+W (close tab)
+                if (e.ctrlKey && e.key === 'w') {
+                    e.preventDefault();
+                    return false;
+                }
+                // Prevent Ctrl+C (copy)
+                if (e.ctrlKey && e.key === 'c') {
+                    e.preventDefault();
+                    alert('⚠️ Copying is not allowed during the test!');
+                    return false;
+                }
+                // Prevent Ctrl+V (paste)
+                if (e.ctrlKey && e.key === 'v') {
+                    e.preventDefault();
+                    alert('⚠️ Pasting is not allowed during the test!');
+                    return false;
+                }
+                // Prevent Ctrl+X (cut)
+                if (e.ctrlKey && e.key === 'x') {
+                    e.preventDefault();
+                    alert('⚠️ Cutting is not allowed during the test!');
+                    return false;
+                }
+                // Prevent Ctrl+A (select all)
+                if (e.ctrlKey && e.key === 'a') {
+                    e.preventDefault();
+                    return false;
+                }
+                // Prevent Print Screen
+                if (e.keyCode === 44) {
+                    e.preventDefault();
+                    return false;
+                }
+            }
+        });
+        
+        // Prevent screenshot APIs
+        if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+            const originalGetDisplayMedia = navigator.mediaDevices.getDisplayMedia;
+            navigator.mediaDevices.getDisplayMedia = function() {
+                return Promise.reject(new Error('Screen capture is not allowed during tests'));
+            };
+        }
+        
+        // Prevent screen recording detection
+        if (navigator.getDisplayMedia) {
+            const originalGetDisplayMedia = navigator.getDisplayMedia;
+            navigator.getDisplayMedia = function() {
+                return Promise.reject(new Error('Screen recording is not allowed during tests'));
+            };
+        }
+        
+        // Prevent right-click
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            return false;
+        });
+        
+        // Prevent drag and drop
+        document.addEventListener('dragstart', function(e) {
+            e.preventDefault();
+            return false;
+        });
+        
+        console.log('Enhanced screenshot protection enabled');
+        
+        // Initialize when page loads
+        initTimer();
+        preventSystemInterruptions();
+    </script>
+</body>
+</html>

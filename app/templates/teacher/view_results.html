@@ -1,0 +1,170 @@
+{% extends "teacher/base_teacher.html" %}
+
+{% block page_title %}View Results{% endblock %}
+
+{% block teacher_content %}
+<div class="view-results-container">
+    <!-- Test Selection -->
+    <div class="mb-4">
+        <div class="card">
+            <div class="card-body">
+                <form method="GET" action="{{ url_for('teacher.view_results') }}">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <label for="test_id" class="form-label">Select Test</label>
+                            <select class="form-select" id="test_id" name="test_id" onchange="this.form.submit()">
+                                <option value="">-- Choose a test --</option>
+                                {% for test in tests %}
+                                    <option value="{{ test.id }}" {% if selected_test and test.id == selected_test.id %}selected{% endif %}>
+                                        {{ test.name }} ({{ test.subject }})
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            {% if selected_test %}
+                                <a href="/teacher/api/tests/{{ selected_test.id }}/results/export" class="btn btn-success">
+                                    <i class="fas fa-file-excel me-2"></i> Export to Excel
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    {% if selected_test %}
+    <!-- Test Info -->
+    <div class="alert alert-primary mb-4">
+        <h5 class="mb-2">📝 {{ selected_test.name }}</h5>
+        <p class="mb-1"><strong>Subject:</strong> {{ selected_test.subject }}</p>
+        <p class="mb-0"><strong>Duration:</strong> {{ selected_test.duration }} minutes</p>
+    </div>
+    {% endif %}
+    
+    {% if statistics and statistics.total_attempts > 0 %}
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="stats-icon">👥</div>
+                <div class="stats-info">
+                    <h3>{{ statistics.total_attempts }}</h3>
+                    <p>Total Attempts</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="stats-icon">📊</div>
+                <div class="stats-info">
+                    <h3>{{ statistics.average_percentage|round(1) }}%</h3>
+                    <p>Average Score</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card success">
+                <div class="stats-icon">⬆️</div>
+                <div class="stats-info">
+                    <h3>{{ statistics.highest_percentage|round(1) }}%</h3>
+                    <p>Highest Score</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card danger">
+                <div class="stats-icon">⬇️</div>
+                <div class="stats-info">
+                    <h3>{{ statistics.lowest_percentage|round(1) }}%</h3>
+                    <p>Lowest Score</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    {% if results %}
+    <!-- Results Table -->
+    <div class="card">
+        <div class="card-header">
+            <h5>Student Results</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>Student Name</th>
+                            <th>Roll Number</th>
+                            <th>Total Questions</th>
+                            <th>Correct</th>
+                            <th>Incorrect</th>
+                            <th>Unanswered</th>
+                            <th>Score</th>
+                            <th>Percentage</th>
+                            <th>Completed At</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for result in results %}
+                        <tr>
+                            <td>{{ result.student_name }}</td>
+                            <td>{{ result.roll_number }}</td>
+                            <td>{{ result.total_questions }}</td>
+                            <td class="text-success">✅ {{ result.correct_answers }}</td>
+                            <td class="text-danger">❌ {{ result.incorrect_answers }}</td>
+                            <td class="text-muted">⚪ {{ result.unanswered }}</td>
+                            <td>{{ result.score }}</td>
+                            <td>
+                                {% if result.percentage >= 80 %}
+                                    <span class="badge bg-success">{{ result.percentage }}%</span>
+                                {% elif result.percentage >= 50 %}
+                                    <span class="badge bg-warning">{{ result.percentage }}%</span>
+                                {% else %}
+                                    <span class="badge bg-danger">{{ result.percentage }}%</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ result.completed_at }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% elif selected_test %}
+    <!-- No Results Message -->
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <div style="font-size: 4rem; margin-bottom: 20px;">📊</div>
+            <h4>No Results Yet</h4>
+            <p class="text-muted">No students have taken this test yet.</p>
+            <div class="mt-4">
+                <p class="mb-2"><strong>Next Steps:</strong></p>
+                <ul class="list-unstyled">
+                    <li>✅ Make sure the test is published</li>
+                    <li>✅ Assign the test to students</li>
+                    <li>✅ Share the test link with students</li>
+                </ul>
+            </div>
+            <div class="mt-4">
+                <a href="{{ url_for('teacher.manage_tests') }}" class="btn btn-primary">
+                    View My Tests
+                </a>
+            </div>
+        </div>
+    </div>
+    {% elif not selected_test %}
+    <!-- No Test Selected -->
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <div style="font-size: 4rem; margin-bottom: 20px;">📝</div>
+            <h4>Select a Test</h4>
+            <p class="text-muted">Choose a test from the dropdown above to view results.</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

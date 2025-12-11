@@ -1,0 +1,57 @@
+{% extends "teacher/base_teacher.html" %}
+
+{% block page_title %}Export Results{% endblock %}
+
+{% block teacher_content %}
+<div class="export-results-container">
+    <div class="card">
+        <div class="card-header">
+            <h5>Export Results to Excel</h5>
+        </div>
+        <div class="card-body">
+            <form method="GET" action="/teacher/api/tests/0/results/export" id="exportForm">
+                <div class="mb-3">
+                    <label for="test_id" class="form-label">Select Test *</label>
+                    <select class="form-select" id="test_id" name="test_id" required>
+                        <option value="">-- Choose a test --</option>
+                        {% for test in tests %}
+                            <option value="{{ test.id }}">{{ test.name }} ({{ test.subject }}) - {{ test.question_count }} questions</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="alert alert-info">
+                    <h6>Export Information:</h6>
+                    <ul>
+                        <li>Results will be exported to an encrypted Excel file</li>
+                        <li>The file will be automatically decrypted for download</li>
+                        <li><strong>Professional format with XIE branding and teacher attribution</strong></li>
+                        <li>Excel file includes: Student name, roll number, scores, percentage</li>
+                        <li>Aggregate results with grade distribution analysis</li>
+                        <li>Statistics summary included at the bottom</li>
+                        <li>Color-coded percentages (Green: 80%+, Yellow: 50-80%, Red: <50%)</li>
+                    </ul>
+                </div>
+                
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-success btn-lg">
+                        <i class="fas fa-file-excel me-2"></i> Export to Excel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block teacher_js %}
+<script>
+document.getElementById('exportForm').addEventListener('submit', function(e) {
+    const testId = document.getElementById('test_id').value;
+    if (testId) {
+        // Update form action with selected test_id
+        this.action = this.action.replace('/0', '/' + testId);
+    }
+});
+</script>
+{% endblock %}

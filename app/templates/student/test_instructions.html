@@ -1,0 +1,110 @@
+{% extends "student/base_student.html" %}
+
+{% block student_content %}
+<div class="instructions-container">
+    <div class="instructions-card">
+        <h2>{{ config.get('ORGANIZATION_NAME', 'Testing Platform') }}</h2>
+        <h3>{{ test.name }}</h3>
+        
+        <!-- Test Details -->
+        <div class="test-details">
+            <p><strong>Subject:</strong> {{ test.subject }}</p>
+            <p><strong>Total Questions:</strong> {{ question_count }}</p>
+            <p><strong>Duration:</strong> {{ test.duration }} minutes</p>
+        </div>
+        
+        <!-- Terms & Conditions -->
+        <div class="terms-section">
+            <h4>Terms & Conditions</h4>
+            {% if terms %}
+                <ol class="terms-list">
+                    {% for term in terms %}
+                    <li>{{ term }}</li>
+                    {% endfor %}
+                </ol>
+            {% else %}
+                <p class="text-muted">No terms and conditions specified</p>
+            {% endif %}
+        </div>
+        
+        <!-- Important Instructions -->
+        <div class="important-instructions">
+            <h4>Important Instructions</h4>
+            <ul>
+                <li>You cannot go back to previous questions</li>
+                <li>Each answer is final once submitted</li>
+                <li>Timer will be running and cannot be stopped</li>
+                <li>Test will auto-submit when time expires</li>
+                <li>Results will be shown immediately after submission</li>
+            </ul>
+        </div>
+        
+        <!-- Fullscreen Warning -->
+        <div class="alert alert-warning mt-3">
+            <h5>🖥️ Fullscreen Mode & Anti-Cheating Measures</h5>
+            <p class="mb-2"><strong>The test will automatically enter fullscreen mode.</strong></p>
+            <ul class="mb-0">
+                <li><strong>Stay in fullscreen</strong> - Do not exit fullscreen mode</li>
+                <li><strong>Stay on test tab</strong> - Do not switch to other tabs or windows</li>
+                <li><strong>First Violation:</strong> You will receive a warning</li>
+                <li><strong>Second Violation:</strong> Your test will be automatically submitted</li>
+                <li><strong>Right-click disabled</strong> - Context menu is blocked during test</li>
+                <li><strong>Copy-paste disabled</strong> - Cannot copy or paste text during test</li>
+                <li><strong>📸 SCREENSHOTS BLOCKED</strong> - Screenshot functionality is completely disabled</li>
+                <li><strong>🎥 RECORDING BLOCKED</strong> - Screen recording is prevented</li>
+                <li><strong>🔒 TEXT PROTECTION</strong> - Text selection and copying disabled</li>
+            </ul>
+            <p class="mt-2 mb-0 text-danger"><strong>⚠️ Violations include:</strong> Exiting fullscreen, switching tabs, switching windows, minimizing browser, or attempting to capture screen content</p>
+            <p class="mt-1 mb-0"><strong>📝 Note:</strong> Test will be submitted even if you have no answers marked (score will be 0)</p>
+            <p class="mt-2 mb-0"><strong>🛡️ Security Features:</strong> The test includes advanced screenshot prevention, screen recording detection, and comprehensive protection measures to ensure test integrity.</p>
+        </div>
+        
+        <!-- Agreement -->
+        <div class="agreement-section">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="agreeTerms" required>
+                <label class="form-check-label" for="agreeTerms">
+                    <strong>I agree to the Terms & Conditions and understand the instructions</strong>
+                </label>
+            </div>
+        </div>
+        
+        <!-- Start Button -->
+        <div class="text-center mt-4">
+            <button id="startTestBtn" class="btn btn-success btn-lg" disabled onclick="startTest({{ test.id }})">
+                Start Test
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('agreeTerms').addEventListener('change', function() {
+    document.getElementById('startTestBtn').disabled = !this.checked;
+});
+
+function startTest(testId) {
+    if (!confirm('Are you ready to start the test? The timer will begin immediately.')) {
+        return;
+    }
+    
+    fetch(`/student/tests/${testId}/start`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.href = data.redirect_url;
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Error starting test: ' + error);
+    });
+}
+</script>
+{% endblock %}

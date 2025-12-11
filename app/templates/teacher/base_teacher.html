@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/teacher.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="teacher-wrapper bg-grainy">
+    <!-- Sidebar -->
+    <nav class="teacher-sidebar">
+        <div class="sidebar-header">
+            <h4>Teacher Panel</h4>
+            <p class="text-muted">{{ current_user.username }}</p>
+        </div>
+        
+        <ul class="sidebar-menu">
+            <li class="{% if request.endpoint == 'teacher.dashboard' %}active{% endif %}">
+                <a href="{{ url_for('teacher.dashboard') }}">
+                    <i class="icon">📊</i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+            <li class="{% if 'tests' in request.endpoint or 'create_test' in request.endpoint %}active{% endif %}">
+                <a href="/teacher/tests">
+                    <i class="icon">📝</i>
+                    <span>My Tests</span>
+                </a>
+            </li>
+            <li class="{% if 'upload_questions' in request.endpoint %}active{% endif %}">
+                <a href="/teacher/upload-questions">
+                    <i class="icon">📤</i>
+                    <span>Upload Questions</span>
+                </a>
+            </li>
+            <li class="{% if 'upload_terms' in request.endpoint %}active{% endif %}">
+                <a href="/teacher/upload-terms">
+                    <i class="icon">📋</i>
+                    <span>Upload Terms</span>
+                </a>
+            </li>
+            <li class="{% if 'results' in request.endpoint or 'export' in request.endpoint %}active{% endif %}">
+                <a href="/teacher/results">
+                    <i class="icon">📈</i>
+                    <span>View Results</span>
+                </a>
+            </li>
+            <li>
+                <a href="/auth/logout">
+                    <i class="icon">🚪</i>
+                    <span>Logout</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    
+    <!-- Main Content -->
+    <div class="teacher-content">
+        <div class="content-header">
+            <h2>{% block page_title %}Teacher Dashboard{% endblock %}</h2>
+        </div>
+        
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        
+        <!-- Page Content -->
+        <div class="page-content">
+            {% block teacher_content %}{% endblock %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% block teacher_js %}{% endblock %}
+{% endblock %}

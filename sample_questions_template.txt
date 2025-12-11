@@ -1,0 +1,102 @@
+SAMPLE POWERPOINT QUESTION FORMAT
+=====================================
+
+Create a PowerPoint (.pptx) file with ONE QUESTION PER SLIDE.
+
+Each slide should follow this EXACT format:
+
+---
+
+SLIDE 1:
+--------
+Question 1: Who developed Python programming language?
+A) Dennis Ritchie
+B) Bjarne Stroustrup
+C) Guido van Rossum
+D) James Gosling
+Answer: C
+Explanation: Python was developed by Guido van Rossum in 1991.
+
+---
+
+SLIDE 2:
+--------
+Question 2: What is the correct file extension for Python files?
+A) .pyth
+B) .pt
+C) .pyt
+D) .py
+Answer: D
+Explanation: Python source code files use the .py extension.
+
+---
+
+SLIDE 3:
+--------
+Question 3: Which of the following is used to display output in Python?
+A) print()
+B) output()
+C) echo()
+D) display()
+Answer: A
+Explanation: The print() function is used in Python to display output to the console.
+
+---
+
+IMPORTANT RULES:
+================
+1. Each slide = ONE question
+2. Question must start with "Question X:" or "QX:" or just "X."
+3. Options MUST be labeled A), B), C), D) (with parenthesis)
+4. Answer line MUST say "Answer: X" (where X is A, B, C, or D)
+5. Explanation is OPTIONAL but recommended
+6. Keep text simple - avoid special characters
+7. Make sure all 4 options are present
+
+ALTERNATIVE FORMATS THAT WORK:
+==============================
+
+Format 1 (with Q prefix):
+Q1: What is the capital of France?
+A) London
+B) Paris
+C) Berlin
+D) Madrid
+Answer: B
+
+Format 2 (with number only):
+1. What is 2 + 2?
+A) 3
+B) 4
+C) 5
+D) 6
+Answer: B
+
+Format 3 (with period):
+Question 1. What color is the sky?
+A) Red
+B) Blue
+C) Green
+D) Yellow
+Answer: B
+
+WHAT TO AVOID:
+==============
+❌ Missing Answer line
+❌ Options labeled as 1), 2), 3), 4) instead of A), B), C), D)
+❌ Multiple questions on one slide
+❌ Empty slides
+❌ Special characters like ©, ®, ™, emojis
+❌ Images without text
+❌ Tables (use plain text instead)
+
+TESTING YOUR PPT:
+=================
+1. Save your PowerPoint as .pptx format
+2. Upload via Teacher Dashboard → Upload Questions
+3. Select your test from the dropdown
+4. Choose "PowerPoint" as file type
+5. Upload the file
+6. Check console/terminal for debug logs if it fails
+
+If upload fails, check the Flask console output for detailed error messages showing which slide failed and why.

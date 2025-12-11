@@ -1,0 +1,346 @@
+{% extends "admin/base_admin.html" %}
+
+{% block page_title %}Assign Tests{% endblock %}
+
+{% block admin_content %}
+<div class="card">
+    <div class="card-header">
+        <h5>Assign Test to Students</h5>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('admin.assign_tests') }}" id="assignTestForm">
+            <!-- Step 1: Select Test -->
+            <div class="mb-4">
+                <h6>Step 1: Select Test</h6>
+                <select class="form-select" name="test_id" id="test_id" required>
+                    <option value="">Choose a test...</option>
+                    {% for test in tests %}
+                    <option value="{{ test.id }}" 
+                            data-duration="{{ test.duration }}" 
+                            data-questions="{{ test.total_questions }}">
+                        {{ test.name }} ({{ test.subject }})
+                    </option>
+                    {% endfor %}
+                </select>
+                {% if not tests %}
+                <div class="alert alert-warning mt-2">
+                    <small>No published tests available. 
+                    {% if current_user.role == 'teacher' %}
+                    Please create and publish a test first.
+                    {% else %}
+                    Please wait for teachers to create tests.
+                    {% endif %}
+                    </small>
+                </div>
+                {% endif %}
+                <div id="testDetails" class="mt-2" style="display: none;">
+                    <small class="text-muted">
+                        Duration: <span id="testDuration"></span> minutes | 
+                        Questions: <span id="testQuestions"></span>
+                    </small>
+                </div>
+            </div>
+            
+            <!-- Step 2: Select Students -->
+            <div class="mb-4">
+                <h6>Step 2: Select Students</h6>
+                <div class="mb-2">
+                    <input type="text" class="form-control" id="studentSearch" placeholder="Search students...">
+                </div>
+                <div class="form-check mb-2">
+                    <input type="checkbox" class="form-check-input" id="selectAll">
+                    <label class="form-check-label" for="selectAll">Select All</label>
+                </div>
+                <div class="student-list" style="max-height: 300px; overflow-y: auto; border: 1px solid var(--color-border); padding: 10px; border-radius: 4px; background: var(--color-card-bg);">
+                    {% if students %}
+                        {% for student in students %}
+                        <div class="form-check student-item" style="padding: 8px; margin: 2px 0; border-radius: 4px; transition: background-color 0.2s;">
+                            <input type="checkbox" class="form-check-input student-checkbox" 
+                                   id="student_{{ student.id }}" name="student_ids" value="{{ student.id }}">
+                            <label class="form-check-label" for="student_{{ student.id }}" style="color: var(--color-text);">
+                                {{ student.username }} 
+                                {% if student.full_name %}({{ student.full_name }}){% endif %}
+                                {% if student.email %}- {{ student.email }}{% endif %}
+                                {% if student.student_id %}- ID: {{ student.student_id }}{% endif %}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="alert alert-info mb-0">
+                            <small class="text-muted">No active students found. Please add students first.</small>
+                        </div>
+                    {% endif %}
+                </div>
+                <small class="text-muted mt-2 d-block">
+                    <span id="selectedCount">0</span> student(s) selected
+                </small>
+            </div>
+            
+            <!-- Step 3: Set Date -->
+            <div class="mb-4">
+                <h6>Step 3: Set Assignment Date</h6>
+                <input type="date" class="form-control" name="assigned_date" id="assigned_date" 
+                       required min="{{ today }}">
+                <small class="text-muted">Cannot select past dates. Students will see this test on the selected date.</small>
+            </div>
+            
+            <!-- Review Section -->
+            <div class="mb-4" id="reviewSection" style="display: none;">
+                <h6>Review Assignment</h6>
+                <div class="alert alert-info">
+                    <strong>Test:</strong> <span id="reviewTest"></span><br>
+                    <strong>Students:</strong> <span id="reviewStudents"></span><br>
+                    <strong>Date:</strong> <span id="reviewDate"></span>
+                </div>
+            </div>
+            
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary" id="submitBtn">
+                    <i class="fas fa-paper-plane me-2"></i>Assign Test
+                </button>
+                <a href="{{ url_for('admin.manage_test_dates') }}" class="btn btn-secondary">
+                    <i class="fas fa-list me-2"></i>View Assignments
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Get today's date in YYYY-MM-DD format
+const today = new Date().toISOString().split('T')[0];
+const dateInput = document.getElementById('assigned_date');
+if (dateInput) {
+    dateInput.value = today;
+}
+
+// Update selected student count
+function updateSelectedCount() {
+    const count = document.querySelectorAll('.student-checkbox:checked').length;
+    const countDisplay = document.getElementById('selectedCount');
+    if (countDisplay) {
+        countDisplay.textContent = count;
+    }
+    
+    // Update "Select All" checkbox state
+    const selectAllCheckbox = document.getElementById('selectAll');
+    const allCheckboxes = document.querySelectorAll('.student-checkbox');
+    if (selectAllCheckbox && allCheckboxes.length > 0) {
+        const allChecked = Array.from(allCheckboxes).every(cb => cb.checked);
+        selectAllCheckbox.checked = allChecked;
+    }
+}
+
+// Update review section
+function updateReview() {
+    const testSelect = document.getElementById('test_id');
+    const selectedStudents = document.querySelectorAll('.student-checkbox:checked');
+    const date = document.getElementById('assigned_date').value;
+    const reviewSection = document.getElementById('reviewSection');
+    
+    if (reviewSection && testSelect && testSelect.value && selectedStudents.length > 0 && date) {
+        reviewSection.style.display = 'block';
+        
+        const reviewTest = document.getElementById('reviewTest');
+        const reviewStudents = document.getElementById('reviewStudents');
+        const reviewDate = document.getElementById('reviewDate');
+        
+        if (reviewTest) reviewTest.textContent = testSelect.options[testSelect.selectedIndex].text;
+        if (reviewStudents) reviewStudents.textContent = selectedStudents.length + ' student(s) selected';
+        if (reviewDate) reviewDate.textContent = date;
+    } else if (reviewSection) {
+        reviewSection.style.display = 'none';
+    }
+}
+
+// Validate form and enable/disable submit button
+function validateForm() {
+    const testSelect = document.getElementById('test_id');
+    const dateInput = document.getElementById('assigned_date');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    if (!submitBtn) return;
+    
+    const testSelected = testSelect && testSelect.value !== '';
+    const studentsSelected = document.querySelectorAll('.student-checkbox:checked').length > 0;
+    const dateSelected = dateInput && dateInput.value !== '';
+    
+    const isValid = testSelected && studentsSelected && dateSelected;
+    
+    // Just update button appearance, don't disable it
+    if (isValid) {
+        submitBtn.classList.remove('btn-secondary');
+        submitBtn.classList.add('btn-primary');
+    } else {
+        submitBtn.classList.remove('btn-primary');
+        submitBtn.classList.add('btn-secondary');
+    }
+    
+    console.log('Validation:', {testSelected, studentsSelected, dateSelected, isValid});
+}
+
+// Test selection handler
+const testSelect = document.getElementById('test_id');
+if (testSelect) {
+    testSelect.addEventListener('change', function() {
+        const option = this.options[this.selectedIndex];
+        const testDetails = document.getElementById('testDetails');
+        
+        if (this.value && testDetails) {
+            testDetails.style.display = 'block';
+            const duration = document.getElementById('testDuration');
+            const questions = document.getElementById('testQuestions');
+            if (duration) duration.textContent = option.dataset.duration || 'N/A';
+            if (questions) questions.textContent = option.dataset.questions || '0';
+        } else if (testDetails) {
+            testDetails.style.display = 'none';
+        }
+        
+        updateReview();
+        validateForm();
+    });
+}
+
+// Select all students handler
+const selectAllCheckbox = document.getElementById('selectAll');
+if (selectAllCheckbox) {
+    selectAllCheckbox.addEventListener('change', function() {
+        const checkboxes = document.querySelectorAll('.student-checkbox');
+        checkboxes.forEach(cb => {
+            cb.checked = this.checked;
+        });
+        updateSelectedCount();
+        updateReview();
+        validateForm();
+    });
+}
+
+// Individual student checkbox handler
+document.querySelectorAll('.student-checkbox').forEach(cb => {
+    cb.addEventListener('change', function() {
+        updateSelectedCount();
+        updateReview();
+        validateForm();
+    });
+});
+
+// Student search handler
+const searchInput = document.getElementById('studentSearch');
+if (searchInput) {
+    searchInput.addEventListener('input', function() {
+        const search = this.value.toLowerCase();
+        document.querySelectorAll('.student-item').forEach(item => {
+            const text = item.textContent.toLowerCase();
+            item.style.display = text.includes(search) ? 'block' : 'none';
+        });
+    });
+}
+
+// Date change handler
+if (dateInput) {
+    dateInput.addEventListener('change', function() {
+        updateReview();
+        validateForm();
+    });
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    updateSelectedCount();
+    validateForm();
+});
+
+// Also run immediately (in case DOMContentLoaded already fired)
+updateSelectedCount();
+validateForm();
+
+// Form submission validation
+const assignForm = document.getElementById('assignTestForm');
+if (assignForm) {
+    assignForm.addEventListener('submit', function(e) {
+        const testId = document.getElementById('test_id').value;
+        const selectedStudents = document.querySelectorAll('.student-checkbox:checked');
+        const date = document.getElementById('assigned_date').value;
+        
+        if (!testId) {
+            e.preventDefault();
+            alert('Please select a test!');
+            return false;
+        }
+        
+        if (selectedStudents.length === 0) {
+            e.preventDefault();
+            alert('Please select at least one student!');
+            return false;
+        }
+        
+        if (!date) {
+            e.preventDefault();
+            alert('Please select an assignment date!');
+            return false;
+        }
+        
+        // Confirm assignment
+        const testName = document.getElementById('test_id').options[document.getElementById('test_id').selectedIndex].text;
+        const confirmMsg = `Assign "${testName}" to ${selectedStudents.length} student(s) on ${date}?\n\nClick OK to confirm.`;
+        if (!confirm(confirmMsg)) {
+            e.preventDefault();
+            return false;
+        }
+        
+        return true;
+    });
+}
+</script>
+
+<style>
+.student-item {
+    transition: background-color 0.2s;
+    border-radius: 4px;
+}
+
+.student-item:hover {
+    background-color: var(--color-hover);
+}
+
+.student-list {
+    background-color: var(--color-card-bg);
+    border: 1px solid var(--color-border);
+}
+
+.student-item label {
+    color: var(--color-text);
+    margin-left: 0.5rem;
+}
+
+.form-check-input:checked {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+.form-check-input:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+#submitBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Dark mode adjustments */
+[data-bs-theme="dark"] .student-item:hover {
+    background-color: rgba(13, 110, 253, 0.1);
+}
+
+[data-bs-theme="dark"] .form-check-input {
+    background-color: var(--color-card-bg);
+    border-color: var(--color-border);
+}
+
+[data-bs-theme="dark"] .form-check-input:checked {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+}
+</style>
+{% endblock %}

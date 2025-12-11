@@ -1,0 +1,945 @@
+{% extends "admin/base_admin.html" %}
+
+{% block page_title %}Dashboard{% endblock %}
+
+{% block admin_content %}
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="stat-card bg-primary">
+            <div class="stat-icon">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="stat-info">
+                <h3 id="activeUsers">-</h3>
+                <p>Active Users (Live)</p>
+                <small class="text-success" id="activeUsersChange">Now</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="stat-card bg-success">
+            <div class="stat-icon">
+                <i class="fas fa-bolt"></i>
+            </div>
+            <div class="stat-info">
+                <h3 id="requestsPerSecond">-</h3>
+                <p>Requests/Second</p>
+                <small class="text-success" id="requestsChange">Live</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="stat-card bg-info">
+            <div class="stat-icon">
+                <i class="fas fa-tachometer-alt"></i>
+            </div>
+            <div class="stat-info">
+                <h3 id="avgResponseTime">-</h3>
+                <p>Avg Response Time</p>
+                <small class="text-success" id="responseTimeChange">Real-time</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="stat-card bg-warning">
+            <div class="stat-icon">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="stat-info">
+                <h3 id="totalRequests">-</h3>
+                <p>Total Requests (30s)</p>
+                <small class="text-danger" id="totalRequestsChange">Current</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Live Activity Feed -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="fas fa-stream me-2"></i>Live Activity Feed</h5>
+                <span class="badge bg-success live-indicator">LIVE</span>
+            </div>
+            <div class="card-body p-0">
+                <div id="liveActivityFeed" style="max-height: 300px; overflow-y: auto;">
+                    <!-- Live activity will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="fas fa-chart-line me-2"></i>Real-time Traffic (30 seconds)</h5>
+                <span class="badge bg-info">Per Second</span>
+            </div>
+            <div class="card-body">
+                <canvas id="realtimeTrafficChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card quick-actions-card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="fas fa-bolt me-2"></i>Quick Actions</h5>
+                <div>
+                    <button class="btn btn-sm btn-outline-primary" onclick="refreshDashboard()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary ms-2" onclick="toggleAutoRefresh()">
+                        <i class="fas fa-clock"></i> Auto-Refresh: <span id="autoRefreshStatus">ON</span>
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <a href="{{ url_for('admin.create_user') }}" class="btn btn-primary">
+                    <i class="fas fa-user-plus me-2"></i> Create User
+                </a>
+                <a href="{{ url_for('admin.assign_tests') }}" class="btn btn-success">
+                    <i class="fas fa-clipboard-list me-2"></i> Assign Test
+                </a>
+                <a href="{{ url_for('admin.manage_users') }}" class="btn btn-info">
+                    <i class="fas fa-users me-2"></i> View All Users
+                </a>
+                <a href="{{ url_for('admin.system_logs') }}" class="btn btn-secondary">
+                    <i class="fas fa-file-alt me-2"></i> View Logs
+                </a>
+                <button class="btn btn-warning" onclick="testTrafficLog()">
+                    <i class="fas fa-bug me-2"></i> Test Traffic
+                </button>
+                <button class="btn btn-outline-info" onclick="debugTraffic()">
+                    <i class="fas fa-search me-2"></i> Debug
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Real-time Traffic Charts -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-line me-2"></i>Real-time Traffic (Last 5 Minutes)</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="realtimeTrafficChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-pie me-2"></i>User Activity by Role</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="userActivityChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- System Health & Performance -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-heartbeat me-2"></i>System Health</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-6">
+                        <div class="text-center">
+                            <h4 class="text-success" id="cpuUsage">0%</h4>
+                            <small class="text-muted">CPU</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center">
+                            <h4 class="text-success" id="memoryUsage">0%</h4>
+                            <small class="text-muted">Memory</small>
+                        </div>
+                    </div>
+                    <div class="col-6 mt-3">
+                        <div class="text-center">
+                            <h4 class="text-success" id="diskUsage">0%</h4>
+                            <small class="text-muted">Disk</small>
+                        </div>
+                    </div>
+                    <div class="col-6 mt-3">
+                        <div class="text-center">
+                            <h4 class="text-info" id="activeConnections">0</h4>
+                            <small class="text-muted">Connections</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-bar me-2"></i>Hourly Traffic Trends</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="hourlyTrafficChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Performance & Status -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-cogs me-2"></i>HTTP Status Codes</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="statusCodesChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-list-ol me-2"></i>Top Endpoints</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="topEndpointsChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Endpoint Performance Table -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-tachometer-alt me-2"></i>Endpoint Performance</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Endpoint</th>
+                                <th>Requests</th>
+                                <th>Avg Response Time</th>
+                                <th>Error Rate</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="endpointPerformance">
+                            <!-- Will be populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-history me-2"></i>Recent Activity</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_activity %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>User</th>
+                                <th>Action</th>
+                                <th>IP Address</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in recent_activity %}
+                            <tr>
+                                <td>{{ log.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>{{ log.username or 'System' }}</td>
+                                <td>{{ log.action }}</td>
+                                <td>{{ log.ip_address }}</td>
+                                <td>
+                                    <span class="badge bg-{{ 'success' if log.status == 'success' else 'danger' }}">
+                                        {{ log.status }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted">No recent activity</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+.live-indicator {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.live-activity-item {
+    transition: background-color 0.2s ease;
+}
+
+.live-activity-item:hover {
+    background-color: rgba(13, 110, 253, 0.05);
+}
+
+.live-activity-item code {
+    font-size: 0.8em;
+    background: rgba(13, 110, 253, 0.1);
+    padding: 2px 4px;
+    border-radius: 3px;
+}
+
+.stat-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.stat-icon {
+    font-size: 2rem;
+    opacity: 0.8;
+}
+
+.stat-info h3 {
+    font-size: 2rem;
+    font-weight: bold;
+    margin: 0;
+}
+
+.stat-info p {
+    margin: 0.25rem 0;
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
+.stat-info small {
+    font-size: 0.75rem;
+}
+</style>
+<script>
+// Global variables
+let autoRefresh = true;
+let refreshInterval;
+let charts = {};
+
+// Initialize dashboard
+document.addEventListener('DOMContentLoaded', function() {
+    initializeCharts();
+    loadDashboardData();
+    startAutoRefresh();
+});
+
+function initializeCharts() {
+    // Real-time traffic chart
+    const realtimeCtx = document.getElementById('realtimeTrafficChart').getContext('2d');
+    charts.realtime = new Chart(realtimeCtx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Requests per minute',
+                data: [],
+                borderColor: 'rgb(13, 110, 253)',
+                backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+
+    // User activity chart
+    const userActivityCtx = document.getElementById('userActivityChart').getContext('2d');
+    charts.userActivity = new Chart(userActivityCtx, {
+        type: 'doughnut',
+        data: {
+            labels: [],
+            datasets: [{
+                data: [],
+                backgroundColor: [
+                    'rgb(13, 110, 253)',
+                    'rgb(25, 135, 84)',
+                    'rgb(255, 193, 7)',
+                    'rgb(220, 53, 69)',
+                    'rgb(108, 117, 125)'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+
+    // Hourly traffic chart
+    const hourlyCtx = document.getElementById('hourlyTrafficChart').getContext('2d');
+    charts.hourly = new Chart(hourlyCtx, {
+        type: 'bar',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Requests',
+                data: [],
+                backgroundColor: 'rgba(13, 110, 253, 0.8)',
+                borderColor: 'rgb(13, 110, 253)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+
+    // Status codes chart
+    const statusCodesCtx = document.getElementById('statusCodesChart').getContext('2d');
+    charts.statusCodes = new Chart(statusCodesCtx, {
+        type: 'pie',
+        data: {
+            labels: [],
+            datasets: [{
+                data: [],
+                backgroundColor: [
+                    'rgb(25, 135, 84)',  // 2xx
+                    'rgb(255, 193, 7)',  // 3xx
+                    'rgb(13, 202, 240)', // 4xx
+                    'rgb(220, 53, 69)'   // 5xx
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+
+    // Top endpoints chart
+    const topEndpointsCtx = document.getElementById('topEndpointsChart').getContext('2d');
+    charts.topEndpoints = new Chart(topEndpointsCtx, {
+        type: 'bar',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Requests',
+                data: [],
+                backgroundColor: 'rgba(13, 110, 253, 0.8)',
+                borderColor: 'rgb(13, 110, 253)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            scales: {
+                x: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+// Initialize dashboard
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Dashboard loading...');
+    
+    // Initialize charts first
+    initializeCharts();
+    
+    // Trigger refresh function on page load
+    refreshDashboard();
+    
+    // Set up automatic refresh every 1 minute using the refresh button function
+    setInterval(() => {
+        console.log('Auto-triggering refresh function (1 minute interval)...');
+        refreshDashboard();
+    }, 60000); // Every 60 seconds (1 minute)
+});
+
+function refreshDashboard() {
+    loadLiveDashboardData();
+}
+
+async function loadLiveDashboardData() {
+    try {
+        console.log('Fetching live dashboard data...');
+        
+        // Get truly real-time data
+        const response = await fetch('/admin/api/traffic/current');
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('Current traffic data:', data);
+        
+        if (data.success) {
+            updateLiveMetrics(data.data);
+        } else {
+            console.error('API returned error:', data.error);
+        }
+        
+        // Get live activity feed
+        const liveResponse = await fetch('/admin/api/traffic/live');
+        
+        if (!liveResponse.ok) {
+            throw new Error(`HTTP error! status: ${liveResponse.status}`);
+        }
+        
+        const liveData = await liveResponse.json();
+        console.log('Live activity data:', liveData);
+        
+        if (liveData.success) {
+            updateLiveActivity(liveData.current_activity);
+            updateLiveCharts(liveData.live_stats);
+        } else {
+            console.error('Live API returned error:', liveData.error);
+        }
+        
+        console.log('Dashboard data updated successfully');
+        
+    } catch (error) {
+        console.error('Error loading live dashboard data:', error);
+        showFallbackData();
+    }
+}
+
+function updateLiveMetrics(liveData) {
+    // Update key metrics with real-time data
+    document.getElementById('activeUsers').textContent = liveData.active_users || 0;
+    document.getElementById('requestsPerSecond').textContent = liveData.current_rps || 0;
+    document.getElementById('avgResponseTime').textContent = 
+        liveData.avg_response_time ? liveData.avg_response_time + 'ms' : '0ms';
+    document.getElementById('totalRequests').textContent = liveData.total_requests || 0;
+    
+    // Simple timestamp update
+    const now = new Date().toLocaleTimeString();
+    document.getElementById('activeUsersChange').textContent = `Updated ${now}`;
+    document.getElementById('requestsChange').textContent = 'Live';
+    document.getElementById('responseTimeChange').textContent = 'Real-time';
+    document.getElementById('totalRequestsChange').textContent = 'Current';
+}
+
+function updateLiveActivity(activity) {
+    const feed = document.getElementById('liveActivityFeed');
+    
+    if (activity && activity.length > 0) {
+        feed.innerHTML = ''; // Clear previous content
+        activity.slice(0, 20).forEach(item => {
+            const time = new Date(item.timestamp).toLocaleTimeString();
+            const statusClass = item.status_code < 400 ? 'success' : 'danger';
+            const methodClass = getMethodClass(item.method);
+            
+            const activityItem = document.createElement('div');
+            activityItem.className = 'live-activity-item p-2 border-bottom';
+            activityItem.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                        <span class="badge ${methodClass} me-2">${item.method}</span>
+                        <span class="badge bg-${statusClass} me-2">${item.status_code}</span>
+                        <code class="text-muted me-2">${item.endpoint}</code>
+                        <small class="text-muted">${item.user_role}</small>
+                    </div>
+                    <div class="text-end">
+                        <small class="text-muted">${time}</small>
+                        <div class="text-muted small">${item.response_time}ms</div>
+                    </div>
+                </div>
+            `;
+            feed.appendChild(activityItem);
+        });
+    } else {
+        // Only show "no activity" if we have no data at all
+        if (feed.innerHTML === '') {
+            feed.innerHTML = '<div class="p-3 text-muted text-center">No recent activity</div>';
+        }
+    }
+}
+
+function getMethodClass(method) {
+    const classes = {
+        'GET': 'bg-primary',
+        'POST': 'bg-success',
+        'PUT': 'bg-warning',
+        'DELETE': 'bg-danger',
+        'PATCH': 'bg-info'
+    };
+    return classes[method] || 'bg-secondary';
+}
+
+function updateLiveCharts(liveStats) {
+    // Update real-time chart with per-second data
+    if (liveStats && liveStats.requests_per_second) {
+        charts.realtime.data.labels = liveStats.requests_per_second.map(r => 
+            new Date(r[0]).toLocaleTimeString()
+        );
+        charts.realtime.data.datasets[0].data = liveStats.requests_per_second.map(r => r[1]);
+        charts.realtime.update();
+    }
+
+    // Update user activity chart
+    if (liveStats && liveStats.user_activity) {
+        charts.userActivity.data.labels = liveStats.user_activity.map(u => u[0]);
+        charts.userActivity.data.datasets[0].data = liveStats.user_activity.map(u => u[1]);
+        charts.userActivity.update();
+    }
+
+    // Update status codes chart
+    if (liveStats && liveStats.status_distribution) {
+        const statusGroups = {
+            '2xx Success': 0,
+            '3xx Redirect': 0,
+            '4xx Client Error': 0,
+            '5xx Server Error': 0
+        };
+        
+        liveStats.status_distribution.forEach(([code, count]) => {
+            if (code >= 200 && code < 300) statusGroups['2xx Success'] += count;
+            else if (code >= 300 && code < 400) statusGroups['3xx Redirect'] += count;
+            else if (code >= 400 && code < 500) statusGroups['4xx Client Error'] += count;
+            else if (code >= 500) statusGroups['5xx Server Error'] += count;
+        });
+        
+        charts.statusCodes.data.labels = Object.keys(statusGroups);
+        charts.statusCodes.data.datasets[0].data = Object.values(statusGroups);
+        charts.statusCodes.update();
+    }
+
+    // Update top endpoints chart
+    if (liveStats && liveStats.top_endpoints) {
+        charts.topEndpoints.data.labels = liveStats.top_endpoints.map(e => e[0]);
+        charts.topEndpoints.data.datasets[0].data = liveStats.top_endpoints.map(e => e[1]);
+        charts.topEndpoints.update();
+    }
+}
+
+function showFallbackData() {
+    // Fallback data for demonstration with more realistic real-time values
+    document.getElementById('activeUsers').textContent = Math.floor(Math.random() * 10) + 1;
+    document.getElementById('requestsPerSecond').textContent = (Math.random() * 5).toFixed(1);
+    document.getElementById('avgResponseTime').textContent = Math.floor(Math.random() * 100) + 20 + 'ms';
+    document.getElementById('totalRequests').textContent = Math.floor(Math.random() * 50) + 10;
+    
+    // Update system health with random values
+    document.getElementById('cpuUsage').textContent = Math.floor(Math.random() * 60) + 20 + '%';
+    document.getElementById('memoryUsage').textContent = Math.floor(Math.random() * 70) + 30 + '%';
+    document.getElementById('diskUsage').textContent = Math.floor(Math.random() * 50) + 40 + '%';
+    document.getElementById('activeConnections').textContent = Math.floor(Math.random() * 30) + 5;
+    
+    // Add some fake live activity
+    const feed = document.getElementById('liveActivityFeed');
+    feed.innerHTML = `
+        <div class="live-activity-item p-2 border-bottom">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-primary me-2">GET</span>
+                    <span class="badge bg-success me-2">200</span>
+                    <code class="text-muted me-2">/admin/dashboard</code>
+                    <small class="text-muted">admin</small>
+                </div>
+                <div class="text-end">
+                    <small class="text-muted">${new Date().toLocaleTimeString()}</small>
+                    <div class="text-muted small">45ms</div>
+                </div>
+            </div>
+        </div>
+        <div class="live-activity-item p-2 border-bottom">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-success me-2">POST</span>
+                    <span class="badge bg-success me-2">201</span>
+                    <code class="text-muted me-2">/api/test_results</code>
+                    <small class="text-muted">student</small>
+                </div>
+                <div class="text-end">
+                    <small class="text-muted">${new Date().toLocaleTimeString()}</small>
+                    <div class="text-muted small">120ms</div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function updateCharts(data) {
+    // Update real-time chart
+    if (data.real_time && data.real_time.requests_per_minute) {
+        charts.realtime.data.labels = data.real_time.requests_per_minute.map(r => 
+            new Date(r[0]).toLocaleTimeString()
+        );
+        charts.realtime.data.datasets[0].data = data.real_time.requests_per_minute.map(r => r[1]);
+        charts.realtime.update();
+    }
+
+    // Update user activity chart
+    if (data.real_time && data.real_time.user_activity) {
+        charts.userActivity.data.labels = data.real_time.user_activity.map(u => u[0]);
+        charts.userActivity.data.datasets[0].data = data.real_time.user_activity.map(u => u[1]);
+        charts.userActivity.update();
+    }
+
+    // Update hourly traffic chart
+    if (data.hourly_traffic) {
+        charts.hourly.data.labels = data.hourly_traffic.map(h => 
+            new Date(h[0]).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})
+        );
+        charts.hourly.data.datasets[0].data = data.hourly_traffic.map(h => h[1]);
+        charts.hourly.update();
+    }
+
+    // Update status codes chart
+    if (data.real_time && data.real_time.status_distribution) {
+        const statusGroups = {
+            '2xx Success': 0,
+            '3xx Redirect': 0,
+            '4xx Client Error': 0,
+            '5xx Server Error': 0
+        };
+        
+        data.real_time.status_distribution.forEach(([code, count]) => {
+            if (code >= 200 && code < 300) statusGroups['2xx Success'] += count;
+            else if (code >= 300 && code < 400) statusGroups['3xx Redirect'] += count;
+            else if (code >= 400 && code < 500) statusGroups['4xx Client Error'] += count;
+            else if (code >= 500) statusGroups['5xx Server Error'] += count;
+        });
+        
+        charts.statusCodes.data.labels = Object.keys(statusGroups);
+        charts.statusCodes.data.datasets[0].data = Object.values(statusGroups);
+        charts.statusCodes.update();
+    }
+
+    // Update top endpoints chart
+    if (data.real_time && data.real_time.top_endpoints) {
+        charts.topEndpoints.data.labels = data.real_time.top_endpoints.slice(0, 5).map(e => e[0]);
+        charts.topEndpoints.data.datasets[0].data = data.real_time.top_endpoints.slice(0, 5).map(e => e[1]);
+        charts.topEndpoints.update();
+    }
+}
+
+function updateSystemHealth(metrics) {
+    if (!metrics) return;
+    
+    document.getElementById('cpuUsage').textContent = Math.round(metrics.cpu_usage) + '%';
+    document.getElementById('memoryUsage').textContent = Math.round(metrics.memory_usage) + '%';
+    document.getElementById('diskUsage').textContent = Math.round(metrics.disk_usage) + '%';
+    document.getElementById('activeConnections').textContent = metrics.active_connections;
+    
+    // Update health indicator colors
+    updateHealthColor('cpuUsage', metrics.cpu_usage);
+    updateHealthColor('memoryUsage', metrics.memory_usage);
+    updateHealthColor('diskUsage', metrics.disk_usage);
+}
+
+function updateHealthColor(elementId, value) {
+    const element = document.getElementById(elementId);
+    element.classList.remove('text-success', 'text-warning', 'text-danger');
+    
+    if (value < 70) {
+        element.classList.add('text-success');
+    } else if (value < 85) {
+        element.classList.add('text-warning');
+    } else {
+        element.classList.add('text-danger');
+    }
+}
+
+function updateEndpointPerformance(performance) {
+    const tbody = document.getElementById('endpointPerformance');
+    tbody.innerHTML = '';
+    
+    if (performance && performance.length > 0) {
+        performance.slice(0, 10).forEach(endpoint => {
+            const row = document.createElement('tr');
+            
+            const statusClass = endpoint.error_rate < 1 ? 'bg-success' :
+                               endpoint.error_rate < 5 ? 'bg-info' :
+                               endpoint.error_rate < 10 ? 'bg-warning' : 'bg-danger';
+            
+            const statusText = endpoint.error_rate < 1 ? 'Excellent' :
+                              endpoint.error_rate < 5 ? 'Good' :
+                              endpoint.error_rate < 10 ? 'Slow' : 'Critical';
+            
+            row.innerHTML = `
+                <td><code>${endpoint.endpoint}</code></td>
+                <td>${endpoint.requests}</td>
+                <td>${endpoint.avg_response_time}ms</td>
+                <td>${endpoint.error_rate}%</td>
+                <td><span class="badge ${statusClass}">${statusText}</span></td>
+            `;
+            tbody.appendChild(row);
+        });
+    } else {
+        // Add placeholder rows
+        for (let i = 0; i < 5; i++) {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><code>/example/endpoint${i + 1}</code></td>
+                <td>${Math.floor(Math.random() * 1000)}</td>
+                <td>${Math.floor(Math.random() * 200)}ms</td>
+                <td>${(Math.random() * 5).toFixed(1)}%</td>
+                <td><span class="badge bg-success">Good</span></td>
+            `;
+            tbody.appendChild(row);
+        }
+    }
+}
+
+function refreshDashboard() {
+    loadLiveDashboardData();
+}
+
+async function testTrafficLog() {
+    try {
+        const response = await fetch('/admin/api/traffic/test-log');
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('✅ Test traffic log created! ID: ' + data.test_log_id);
+            // Refresh dashboard to see the new entry
+            loadLiveDashboardData();
+        } else {
+            alert('❌ Test failed: ' + data.error);
+        }
+    } catch (error) {
+        alert('❌ Test error: ' + error.message);
+    }
+}
+
+async function debugTraffic() {
+    try {
+        const response = await fetch('/admin/api/traffic/debug');
+        const data = await response.json();
+        
+        if (data.success) {
+            console.log('Traffic Debug Info:', data.debug_info);
+            
+            const debugInfo = data.debug_info;
+            const message = `
+🔍 Traffic Debug Information:
+
+Current Request:
+- Authenticated: ${debugInfo.current_request.is_authenticated}
+- User ID: ${debugInfo.current_request.user_id}
+- Role: ${debugInfo.current_request.role}
+- Endpoint: ${debugInfo.current_request.request_endpoint}
+
+Database Stats:
+- Total logs: ${debugInfo.database_stats.total_logs}
+- Logs with users: ${debugInfo.database_stats.logs_with_users}
+- Recent logs (5min): ${debugInfo.database_stats.recent_logs_5min}
+
+Real-time Stats:
+- Active users: ${debugInfo.real_time_stats.active_users}
+- Total requests: ${debugInfo.real_time_stats.total_requests}
+- Current RPS: ${debugInfo.real_time_stats.current_rps}
+
+Recent logs: ${debugInfo.recent_logs.length} entries
+            `;
+            
+            alert(message);
+        } else {
+            alert('❌ Debug failed: ' + data.error);
+        }
+    } catch (error) {
+        alert('❌ Debug error: ' + error.message);
+    }
+}
+
+function toggleAutoRefresh() {
+    autoRefresh = !autoRefresh;
+    document.getElementById('autoRefreshStatus').textContent = autoRefresh ? 'ON' : 'OFF';
+    document.getElementById('autoRefreshButton').textContent = autoRefresh ? 'Stop Auto Refresh' : 'Start Auto Refresh';
+    
+    if (autoRefresh) {
+        startAutoRefresh();
+    } else {
+        stopAutoRefresh();
+    }
+}
+
+function startAutoRefresh() {
+    if (refreshInterval) clearInterval(refreshInterval);
+    refreshInterval = setInterval(loadDashboardData, 5000); // Refresh every 5 seconds
+}
+
+function stopAutoRefresh() {
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+        refreshInterval = null;
+    }
+}
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', function() {
+    stopAutoRefresh();
+});
+</script>
+{% endblock %}

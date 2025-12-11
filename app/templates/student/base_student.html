@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/student.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="student-wrapper bg-grainy">
+    <!-- Simple Header -->
+    <nav class="student-navbar">
+        <div class="navbar-brand">
+            <h4>{{ config.get('ORGANIZATION_NAME', 'ProctoriaX') }}</h4>
+        </div>
+        <div class="navbar-menu">
+            <a href="{{ url_for('student.dashboard') }}" class="{% if request.endpoint == 'student.dashboard' %}active{% endif %}">
+                Dashboard
+            </a>
+            <span class="navbar-user">{{ current_user.username }}</span>
+            <a href="{{ url_for('auth.logout') }}" class="logout-btn">Logout</a>
+        </div>
+    </nav>
+    
+    <!-- Main Content -->
+    <div class="student-content">
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        
+        <!-- Page Content -->
+        {% block student_content %}{% endblock %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% block student_js %}{% endblock %}
+{% endblock %}

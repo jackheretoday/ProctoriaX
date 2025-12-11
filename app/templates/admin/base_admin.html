@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="admin-wrapper bg-grainy">
+    <!-- Sidebar -->
+    <nav class="admin-sidebar">
+        <div class="sidebar-header">
+            <h4>Admin Panel</h4>
+            <p class="text-muted">{{ current_user.username }}</p>
+        </div>
+        
+        <ul class="sidebar-menu">
+            <li class="{% if request.endpoint == 'admin.dashboard' %}active{% endif %}">
+                <a href="{{ url_for('admin.dashboard') }}">
+                    <i class="icon">📊</i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+            <li class="{% if 'users' in request.endpoint %}active{% endif %}">
+                <a href="{{ url_for('admin.manage_users') }}">
+                    <i class="icon">👥</i>
+                    <span>Manage Users</span>
+                </a>
+            </li>
+            <li class="{% if 'assign' in request.endpoint %}active{% endif %}">
+                <a href="{{ url_for('admin.assign_tests') }}">
+                    <i class="icon">📝</i>
+                    <span>Assign Tests</span>
+                </a>
+            </li>
+            <li class="{% if 'test-dates' in request.endpoint %}active{% endif %}">
+                <a href="{{ url_for('admin.manage_test_dates') }}">
+                    <i class="icon">📅</i>
+                    <span>Test Dates</span>
+                </a>
+            </li>
+            <li class="{% if 'logs' in request.endpoint %}active{% endif %}">
+                <a href="{{ url_for('admin.system_logs') }}">
+                    <i class="icon">📋</i>
+                    <span>System Logs</span>
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('auth.logout') }}">
+                    <i class="icon">🚪</i>
+                    <span>Logout</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    
+    <!-- Main Content -->
+    <div class="admin-content">
+        <div class="content-header">
+            <h2>{% block page_title %}Admin Dashboard{% endblock %}</h2>
+        </div>
+        
+        <div class="content-body">
+            {% block admin_content %}{% endblock %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='js/admin-dashboard.js') }}"></script>
+{% endblock %}

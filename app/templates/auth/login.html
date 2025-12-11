@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+
+{% block title %}Login - ProctoriaX{% endblock %}
+
+{% block extra_css %}
+<style>
+    .login-page {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        background-color: var(--color-bg);
+    }
+
+    .brand-section {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        padding: 1.5rem 1rem 1rem 1rem;
+        text-align: center;
+    }
+
+    .logo-mini {
+        width: 60px;
+        height: 60px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        /* background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%); */
+        color: #fff;
+        font-size: 1.2rem;
+        /* box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); */
+    }
+
+    .logo-mini img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+    }
+
+    .brand-title {
+        font-weight: 800;
+        font-size: 1.8rem;
+        letter-spacing: -0.5px;
+        background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-top: 0.5rem;
+    }
+
+    .brand-section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.2rem;
+        padding: 2rem 1rem 1rem 1rem;
+        text-align: center;
+    }
+
+    .login-card {
+        width: 100%;
+        max-width: 400px;
+        border-radius: 12px;
+        border: 1px solid var(--color-border);
+        overflow: hidden;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+        transition: all 0.3s ease;
+    }
+
+    .login-card:hover {
+        box-shadow: 0 15px 30px rgba(0, 0, 0, 0.12);
+        transform: translateY(-2px);
+    }
+
+    .form-section {
+        padding: 1.5rem;
+    }
+
+    .form-label {
+        font-weight: 500;
+        color: var(--color-text);
+        margin-bottom: 0.5rem;
+    }
+
+    .input-group-icon {
+        position: relative;
+        margin-bottom: 1.25rem;
+    }
+
+    .input-group-icon i {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--color-text-secondary);
+        z-index: 10;
+    }
+
+    .input-group-icon .form-control {
+        padding-left: 40px;
+        height: 48px;
+        border-radius: 8px;
+        border: 1px solid var(--color-border);
+        background-color: var(--color-card-bg);
+        color: var(--color-text);
+        transition: all 0.2s ease;
+    }
+
+    .input-group-icon .form-control:focus {
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+    }
+
+    .btn-login {
+        width: 100%;
+        padding: 0.75rem;
+        font-weight: 600;
+        border-radius: 8px;
+        background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%);
+        border: none;
+        color: white;
+        transition: all 0.3s ease;
+    }
+
+    .btn-login:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 15px rgba(13, 110, 253, 0.3);
+    }
+
+    .btn-login:active {
+        transform: translateY(0);
+    }
+
+    .form-check-label {
+        color: var(--color-text);
+        font-size: 0.9rem;
+    }
+
+    .text-center a {
+        font-weight: 500;
+        transition: color 0.2s ease;
+    }
+
+    .text-center a:hover {
+        color: var(--color-accent) !important;
+    }
+
+    /* Dark mode specific adjustments */
+    [data-bs-theme="dark"] .login-card {
+        background-color: var(--color-card-bg);
+        border: 1px solid var(--color-border);
+    }
+
+    [data-bs-theme="dark"] .form-control {
+        background-color: var(--color-card-bg);
+        color: var(--color-text);
+        border-color: var(--color-border);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-page">
+    <div class="login-card glass-card">
+        <div class="brand-section">
+            <span class="logo-mini">
+                <img src="{{ url_for('static', filename='images/ProcotiaX_logo.png') }}" alt="ProctoriaX Logo">
+            </span>
+            <span class="brand-title">ProctoriaX</span>
+        </div>
+        <div class="form-section">
+            <form method="POST" action="{{ url_for('auth.login') }}" id="loginForm">
+                <div class="mb-3">
+                    <label for="username" class="form-label"><i class="fas fa-user me-1"></i> Username</label>
+                    <div class="input-group-icon">
+                        <i class="fas fa-user"></i>
+                        <input type="text" class="form-control" id="username" name="username" required autofocus
+                            placeholder="Username" autocomplete="username">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="password" class="form-label"><i class="fas fa-lock me-1"></i> Password</label>
+                    <div class="input-group-icon">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" class="form-control" id="password" name="password" required
+                            placeholder="Password" autocomplete="current-password">
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="remember" name="remember">
+                        <label class="form-check-label" for="remember">Keep me signed in</label>
+                    </div>
+                </div>
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-login btn-auth">
+                        <i class="fas fa-sign-in-alt me-2"></i>Sign In
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<div class="text-center mt-3">
+    <span class="text-muted" style="font-size:.95rem">Don't have an account?</span>
+    <a href="{{ url_for('auth.register') }}"
+        style="color: var(--color-primary); text-decoration: none; font-weight: 600; margin-left: 0.49rem;">Sign Up</a>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) {
+        loginForm.addEventListener('submit', function (e) {
+            const btn = this.querySelector('.btn-login');
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Signing In...';
+            btn.disabled = true;
+        });
+    }
+</script>
+{% endblock %}

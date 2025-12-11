@@ -1,0 +1,197 @@
+{% extends "student/base_student.html" %}
+
+{% block student_content %}
+<div class="review-container">
+    <div class="review-header">
+        <h2><i class="fas fa-clipboard-check me-2"></i>Test Review</h2>
+        <div class="test-summary">
+            <span class="badge bg-primary">{{ test.name }}</span>
+            <span class="badge bg-info">{{ test.subject }}</span>
+            <span class="badge bg-success">{{ result.correct_answers }}/{{ result.total_questions }} Correct</span>
+            <span class="badge bg-warning">{{ result.percentage|round(1) }}%</span>
+        </div>
+    </div>
+    
+    <div class="questions-review">
+        {% for item in review_data %}
+        <div class="question-review-card {% if item.is_correct %}correct{% else %}incorrect{% endif %}" data-status="{% if item.is_correct %}correct{% else %}incorrect{% endif %}">
+            <div class="question-header">
+                <h4>Question {{ item.question_number }}
+                    {% if item.is_correct %}
+                        <span class="badge bg-success">✓ Correct</span>
+                    {% else %}
+                        <span class="badge bg-danger">✗ Incorrect</span>
+                    {% endif %}
+                </h4>
+            </div>
+            
+            <div class="question-text prevent-screenshot">{{ item.question_text }}</div>
+            
+            <div class="options-review">
+                {% for option_key, option_value in item.options.items() %}
+                <div class="option-review {% if option_key == item.correct_answer %}correct-answer{% endif %} {% if option_key == item.your_answer and option_key != item.correct_answer %}wrong-answer{% endif %} {% if option_key == item.your_answer %}your-answer{% endif %} prevent-screenshot">
+                    <strong>{{ option_key }})</strong> {{ option_value }}
+                    {% if option_key == item.correct_answer %}
+                        <span class="badge bg-success ms-2">Correct Answer</span>
+                    {% endif %}
+                    {% if option_key == item.your_answer %}
+                        <span class="badge bg-primary ms-2">Your Answer</span>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            
+            {% if item.explanation %}
+            <div class="explanation prevent-screenshot">
+                <strong>Explanation:</strong> {{ item.explanation }}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    
+    <div class="text-center mt-4">
+        <a href="{{ url_for('student.dashboard') }}" class="btn btn-primary">Back to Dashboard</a>
+    </div>
+</div>
+
+<!-- Screenshot Prevention Overlay -->
+<div class="test-prevention-overlay"></div>
+
+<script>
+// Prevent screenshots and basic protection
+(function() {
+    'use strict';
+    
+    // Disable right-click context menu
+    document.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+        return false;
+    });
+    
+    // Disable text selection
+    document.addEventListener('selectstart', function(e) {
+        if (e.target.closest('.prevent-screenshot')) {
+            e.preventDefault();
+            return false;
+        }
+    });
+    
+    // Disable copy
+    document.addEventListener('copy', function(e) {
+        if (e.target.closest('.prevent-screenshot')) {
+            e.preventDefault();
+            return false;
+        }
+    });
+    
+    // Disable cut
+    document.addEventListener('cut', function(e) {
+        if (e.target.closest('.prevent-screenshot')) {
+            e.preventDefault();
+            return false;
+        }
+    });
+    
+    // Prevent drag and drop
+    document.addEventListener('dragstart', function(e) {
+        if (e.target.closest('.prevent-screenshot')) {
+            e.preventDefault();
+            return false;
+        }
+    });
+    
+    // Detect dev tools (basic protection)
+    let devtools = {open: false, orientation: null};
+    const threshold = 160;
+    
+    const emitEvent = (state, orientation) => {
+        if (state !== devtools.open) {
+            devtools.open = state;
+            devtools.orientation = orientation;
+            console.warn('DevTools detected. Test protection enabled.');
+        }
+    };
+    
+    const main = ({emitEvents = true} = {}) => {
+        const startThreshold = threshold;
+        let start = performance.now();
+        
+        const mainLoop = () => {
+            const now = performance.now();
+            const widthThreshold = window.outerWidth - window.innerWidth > startThreshold;
+            const heightThreshold = window.outerHeight - window.innerHeight > startThreshold;
+            const orientation = widthThreshold ? 'vertical' : 'horizontal';
+            
+            if (
+                !(heightThreshold && widthThreshold) &&
+                ((window.Firefox && window.Firefox.devtools) ||
+                (window.chrome && window.chrome.app && window.chrome.app.runtime) ||
+                (window.opera && window.opera.devtools) ||
+                window.safari && window.safari.open)
+            ) {
+                if (!devtools.open || devtools.orientation !== orientation) {
+                    emitEvent(true, orientation);
+                }
+            } else {
+                if (devtools.open) {
+                    emitEvent(false, undefined);
+                }
+            }
+        };
+        
+        const check = () => {
+            mainLoop();
+            if (emitEvents) {
+                window.requestAnimationFrame(check);
+            }
+        };
+        
+        window.requestAnimationFrame(check);
+    };
+    
+    main({emitEvents: true});
+    
+    // Keyboard shortcuts protection
+    document.addEventListener('keydown', function(e) {
+        // F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U, Print Screen
+        if (e.keyCode === 123 || 
+            (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74)) ||
+            (e.ctrlKey && e.keyCode === 85) ||
+            (e.keyCode === 44)) { // Print Screen key
+            e.preventDefault();
+            return false;
+        }
+    });
+    
+    // Blur window protection (when switching tabs/apps)
+    let blurCount = 0;
+    document.addEventListener('visibilitychange', function() {
+        if (document.hidden) {
+            blurCount++;
+            if (blurCount > 3) {
+                console.warn('Multiple tab switches detected. Test integrity may be compromised.');
+            }
+        }
+    });
+    
+    // Prevent screenshot APIs
+    if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+        const originalGetDisplayMedia = navigator.mediaDevices.getDisplayMedia;
+        navigator.mediaDevices.getDisplayMedia = function() {
+            return Promise.reject(new Error('Screen capture is not allowed during tests'));
+        };
+    }
+    
+    // Prevent screen recording detection
+    if (navigator.getDisplayMedia) {
+        const originalGetDisplayMedia = navigator.getDisplayMedia;
+        navigator.getDisplayMedia = function() {
+            return Promise.reject(new Error('Screen recording is not allowed during tests'));
+        };
+    }
+    
+    console.log('Test protection enabled - screenshots blocked');
+})();
+</script>
+{% endblock %}
