@@ -24,6 +24,13 @@ def create_app(config_name='development'):
     from app.config import config_by_name
     app.config.from_object(config_by_name.get(config_name, config_by_name['default']))
     
+    # Ensure instance and logs folders exist
+    try:
+        os.makedirs(app.instance_path, exist_ok=True)
+        os.makedirs(os.path.join(app.instance_path, '../logs'), exist_ok=True)
+    except OSError:
+        pass
+    
     # Initialize extensions
     init_extensions(app)
     
