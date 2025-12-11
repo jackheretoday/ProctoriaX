@@ -32,3 +32,4 @@ Flask-DebugToolbar==0.14.1
 
 # Production
 gunicorn==21.2.0
+psutil==5.9.8
