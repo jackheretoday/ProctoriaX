@@ -27,5 +27,8 @@ def init_db(app):
             User, Test, Question, Assignment, 
             Result, TermsConditions, AuditLog
         )
+        
+        # Create tables if they don't exist
+        db.create_all()
     
     return db

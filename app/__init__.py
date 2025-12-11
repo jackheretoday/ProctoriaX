@@ -49,7 +49,63 @@ def create_app(config_name='development'):
     # Register routes
     register_routes(app)
     
+    # Seed initial data
+    seed_data(app)
+    
     return app
+
+
+def seed_data(app):
+    """Seed initial data if not exists"""
+    with app.app_context():
+        try:
+            from app.models.user import User
+            from app.services.auth_service import AuthService
+            from app.extensions.database import db
+            
+            # Check if any admin exists
+            admin = User.query.filter_by(role='admin').first()
+            if not admin:
+                print("Seeding default admin user...")
+                # Hash password 'admin123'
+                password_hash = AuthService.hash_password('admin123')
+                
+                admin = User(
+                    username='admin',
+                    email='admin@proctoriax.com',
+                    password_hash=password_hash,
+                    role='admin',
+                    full_name='System Administrator',
+                    is_active=True,
+                    is_verified=True
+                )
+                db.session.add(admin)
+                db.session.commit()
+                print("Default admin created: admin / admin123")
+        except Exception as e:
+            # Log error but don't crash app
+            print(f"Seeding skipped/failed: {e}")
+
+
+def register_error_handlers(app):
+    """Register error handlers"""
+    
+    @app.errorhandler(403)
+    def forbidden(e):
+        """Handle 403 Forbidden"""
+        return render_template('errors/403.html'), 403
+    
+    @app.errorhandler(404)
+    def not_found(e):
+        """Handle 404 Not Found"""
+        return render_template('errors/404.html'), 404
+    
+    @app.errorhandler(500)
+    def internal_error(e):
+        """Handle 500 Internal Server Error"""
+        from app.extensions.database import db
+        db.session.rollback()
+        return render_template('errors/500.html'), 500
 
 
 def init_extensions(app):
@@ -144,25 +200,7 @@ def register_blueprints(app):
     app.register_blueprint(student_bp)
 
 
-def register_error_handlers(app):
-    """Register error handlers"""
-    
-    @app.errorhandler(403)
-    def forbidden(e):
-        """Handle 403 Forbidden"""
-        return render_template('errors/403.html'), 403
-    
-    @app.errorhandler(404)
-    def not_found(e):
-        """Handle 404 Not Found"""
-        return render_template('errors/404.html'), 404
-    
-    @app.errorhandler(500)
-    def internal_error(e):
-        """Handle 500 Internal Server Error"""
-        from app.extensions.database import db
-        db.session.rollback()
-        return render_template('errors/500.html'), 500
+
 
 
 def register_template_filters(app):
